@@ -1,10 +1,22 @@
 // OptixPathtracer.cpp : Diese Datei enthält die Funktion "main". Hier beginnt und endet die Ausführung des Programms.
 //
 
+#include"OptiX/OptixRenderer.h"
 #include <iostream>
 
 int main()
 {
+	try
+	{
+		OptixRenderer* optixRenderer = new OptixRenderer();
+
+		std::cout << "Everything OK" << std::endl;
+	}
+	catch (const std::exception&)
+	{
+		std::cout << "Error" << std::endl;
+	}
+
     std::cout << "Hello World!\n";
 }
 
