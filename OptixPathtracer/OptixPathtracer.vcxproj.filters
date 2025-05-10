@@ -21,6 +21,15 @@
     <ClCompile Include="source\OptiX\OptixRenderer.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="source\OpenGLWindow.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\OptixView.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\OptixViewTexture.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\OptiX\OptixRenderer.h">
@@ -32,5 +41,20 @@
     <ClInclude Include="source\3rdParty\OptixSample\optix7.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="source\OpenGLWindow.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\OptiX\LaunchParams.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\OptixView.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\OptixViewTexture.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="source\OptiX\devicePrograms.cu" />
   </ItemGroup>
 </Project>
