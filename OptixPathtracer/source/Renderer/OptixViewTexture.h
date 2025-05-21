@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <glad/glad.h>
-#include "3rdParty/glm/glm.hpp"
+#include "../3rdParty/glm/glm.hpp"
 
 class OptixViewTexture {
 public:

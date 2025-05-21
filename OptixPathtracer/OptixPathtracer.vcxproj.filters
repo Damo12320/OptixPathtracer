@@ -18,43 +18,70 @@
     <ClCompile Include="source\main.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="source\OptiX\OptixRenderer.cpp">
+    <ClCompile Include="source\Renderer\OpenGLWindow.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="source\OpenGLWindow.cpp">
+    <ClCompile Include="source\Renderer\OptixView.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="source\OptixView.cpp">
+    <ClCompile Include="source\Renderer\OptixViewTexture.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="source\OptixViewTexture.cpp">
+    <ClCompile Include="source\ModelLoading\ModelLoader.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Renderer\OptiX\OptixRenderer.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ModelLoading\Mesh.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\OptiX\OptixRenderer.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="source\3rdParty\OptixSample\CUDABuffer.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="source\3rdParty\OptixSample\optix7.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="source\OpenGLWindow.h">
+    <ClInclude Include="source\Renderer\OpenGLWindow.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="source\OptiX\LaunchParams.h">
+    <ClInclude Include="source\Renderer\OptixView.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="source\OptixView.h">
+    <ClInclude Include="source\Renderer\OptixViewTexture.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="source\OptixViewTexture.h">
+    <ClInclude Include="source\ModelLoading\ModelLoader.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ModelLoading\Mesh.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\LaunchParams.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\OptixRenderer.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\ModelLoading\Model.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\MeshSBTData.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\OptixHelpers.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="source\OptiX\devicePrograms.cu" />
+    <None Include="..\..\..\..\Users\damia\Desktop\IDK-Engine\IDKEngine\Resource\Final Scenes Lights\3\untitled.bin">
+      <Filter>Ressourcendateien</Filter>
+    </None>
+    <None Include="source\Renderer\OptiX\devicePrograms.cu.ptx" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="source\Renderer\OptiX\devicePrograms.cu" />
   </ItemGroup>
 </Project>

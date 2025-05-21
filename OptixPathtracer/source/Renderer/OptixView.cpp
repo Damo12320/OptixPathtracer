@@ -1,4 +1,5 @@
 #include "OptixView.h"
+#include <iostream>
 
 //What should happen when the Window resizes
 static void OnWindowResize(GLFWwindow* window, int width, int height) {
@@ -12,9 +13,9 @@ static void OnWindowResize(GLFWwindow* window, int width, int height) {
 
 
 
-OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize) {
+OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model) {
 	this->window = std::unique_ptr<OpenGLWindow>(new OpenGLWindow(viewSize));
-	this->optixRenderer = std::unique_ptr<OptixRenderer>(new OptixRenderer(viewDef.ptxPath));
+	this->optixRenderer = std::unique_ptr<OptixRenderer>(new OptixRenderer(viewDef.ptxPath, model));
 	this->viewTexture = std::unique_ptr<OptixViewTexture>(new OptixViewTexture());
 
 	this->viewSize = viewSize;

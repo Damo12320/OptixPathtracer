@@ -19,7 +19,7 @@ public:
 private:
 	std::unique_ptr<OptixViewTexture> viewTexture;
 public:
-	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize);
+	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model);
 
 	void Run();
 	void Resize(int width, int height);

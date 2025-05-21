@@ -20,22 +20,35 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp" />
-    <ClCompile Include="source\OpenGLWindow.cpp" />
-    <ClCompile Include="source\OptixViewTexture.cpp" />
-    <ClCompile Include="source\OptixView.cpp" />
-    <ClCompile Include="source\OptiX\OptixRenderer.cpp" />
+    <ClCompile Include="source\ModelLoading\Mesh.cpp" />
+    <ClCompile Include="source\ModelLoading\ModelLoader.cpp" />
+    <ClCompile Include="source\Renderer\OpenGLWindow.cpp" />
+    <ClCompile Include="source\Renderer\OptixViewTexture.cpp" />
+    <ClCompile Include="source\Renderer\OptixView.cpp" />
+    <ClCompile Include="source\Renderer\OptiX\OptixRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\3rdParty\OptixSample\CUDABuffer.h" />
     <ClInclude Include="source\3rdParty\OptixSample\optix7.h" />
-    <ClInclude Include="source\OpenGLWindow.h" />
-    <ClInclude Include="source\OptixViewTexture.h" />
-    <ClInclude Include="source\OptixView.h" />
-    <ClInclude Include="source\OptiX\LaunchParams.h" />
-    <ClInclude Include="source\OptiX\OptixRenderer.h" />
+    <ClInclude Include="source\ModelLoading\Mesh.h" />
+    <ClInclude Include="source\ModelLoading\Model.h" />
+    <ClInclude Include="source\ModelLoading\ModelLoader.h" />
+    <ClInclude Include="source\Renderer\OpenGLWindow.h" />
+    <ClInclude Include="source\Renderer\OptixViewTexture.h" />
+    <ClInclude Include="source\Renderer\OptixView.h" />
+    <ClInclude Include="source\Renderer\OptiX\LaunchParams.h" />
+    <ClInclude Include="source\Renderer\OptiX\MeshSBTData.h" />
+    <ClInclude Include="source\Renderer\OptiX\OptixHelpers.h" />
+    <ClInclude Include="source\Renderer\OptiX\OptixRenderer.h" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="source\OptiX\devicePrograms.cu" />
+    <None Include="..\..\..\..\Users\damia\Desktop\IDK-Engine\IDKEngine\Resource\Final Scenes Lights\3\untitled.bin" />
+    <None Include="source\Renderer\OptiX\devicePrograms.cu.ptx" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="source\Renderer\OptiX\devicePrograms.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -139,7 +152,7 @@
       <NvccCompilation>ptx</NvccCompilation>
     </CudaCompile>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)x64\Debug\*.ptx" "$(ProjectDir)source\OptiX"</Command>
+      <Command>copy "$(ProjectDir)x64\Debug\*.ptx" "$(ProjectDir)source\Renderer\OptiX"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

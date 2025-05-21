@@ -1,6 +1,6 @@
 #include"OpenGLWindow.h"
 #include <iostream>
-#include "3rdParty/glad.c"
+#include "../3rdParty/glad.c"
 
 static void glfw_error_callback(int error, const char* description)
 {
