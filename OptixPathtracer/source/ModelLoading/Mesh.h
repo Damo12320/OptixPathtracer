@@ -16,14 +16,19 @@ public:
 
 	std::vector<glm::ivec3> index;
 
-	glm::vec3 albedo;
-
+	//Transformation
 	glm::vec3 translation;
 	glm::vec3 scale;
 	glm::quat rotation;
 
 	std::vector<float> ModelMatrix;
 
+	//Material
+	glm::vec3 albedo;
+	float metallic;
+	float roughness;
+
+	//Textures
 	int albedoTex;
 	int normalTex;
 	int metalRoughTex;
@@ -31,4 +36,8 @@ public:
 public:
 	glm::mat4x4 GetModelMatrix();
 	void CalculateModelMatrix();
+
+	bool HasAlbedoTex();
+	bool HasNormalTex();
+	bool HasMetalRoughTex();
 };

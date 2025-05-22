@@ -8,15 +8,16 @@
 
 //public static
 //public static
-Model* ModelLoader::LoadModel(std::string filePath) {
-	std::cout << "Load Model at path: " << filePath << std::endl;
+std::unique_ptr<Model> ModelLoader::LoadModel(std::string folderPath, std::string fileName) {
+	std::cout << "Load Model at path: " << folderPath << fileName << std::endl;
+	std::cout << "Only the first scene of the GLTF will be loaded!" << std::endl;
 
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
 
-	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filePath);
+	bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, folderPath + fileName);
 
 	if (!warn.empty()) {
 		std::cout << "Warn: " << warn.c_str() << std::endl;
@@ -30,10 +31,59 @@ Model* ModelLoader::LoadModel(std::string filePath) {
 		std::cout << "Failed to parse glTF" << std::endl;
 	}
 
-	Model* finalModel = new Model();
-	ParseScene(finalModel, model, model.scenes[0]);
+	std::unique_ptr<Model> finalModel(new Model());
 
-	return finalModel;
+	ParseScene(finalModel.get(), model, model.scenes[0]);
+
+	LoadTextures(finalModel.get(), model, folderPath);
+
+
+	std::cout << "Model loaded! \n" << std::endl;
+	return std::move(finalModel);
+}
+
+//private static
+void ModelLoader::LoadTextures(Model* finalModel, tinygltf::Model& model, std::string& folderPath) {
+	std::cout << "Loading " << model.textures.size() << " Textures..." << std::endl;
+
+	int textureCounter = 0;
+
+	for (int i = 0; i < model.textures.size(); i++) {
+		tinygltf::Texture texture = model.textures[i];
+
+		std::string texturePath = model.images[texture.source].uri;
+
+		texturePath = folderPath + texturePath;
+
+		//std::cout << "TexturePath " << texturePath << std::endl;
+
+		glm::ivec2 res;
+		int comp;
+		unsigned char* image = stbi_load(texturePath.c_str(), &res.x, &res.y, &comp, STBI_rgb_alpha);
+
+		if (image) {
+			std::unique_ptr<Texture> texture(new Texture);
+			texture->resolution = res;
+
+			texture->pixel = (uint32_t*)image;
+
+			//this is said by the Optix Sample. I couldn't see the issue
+			/* iw - actually, it seems that stbi loads the pictures mirrored along the y axis - mirror them here */
+			/*for (int y = 0; y < res.y / 2; y++) {
+				uint32_t* line_y = texture->pixel + y * res.x;
+				uint32_t* mirrored_y = texture->pixel + (res.y - 1 - y) * res.x;
+				int mirror_y = res.y - 1 - y;
+				for (int x = 0; x < res.x; x++) {
+					std::swap(line_y[x], mirrored_y[x]);
+				}
+			}*/
+
+			textureCounter++;
+			finalModel->textures.push_back(std::move(texture));
+		}
+	}
+
+	std::cout << "Loaded " << textureCounter << " Textures" << std::endl;
 }
 
 //private static
@@ -48,7 +98,8 @@ void ModelLoader::ParseNodes(Model* finalModel, tinygltf::Model& model, tinygltf
 	tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
 	for (tinygltf::Primitive& primitive : mesh.primitives) {
-		Mesh* finalMesh = new Mesh();
+		//Every Primitive is its own Mesh (only has one Material per Mesh)
+		std::unique_ptr<Mesh> finalMesh(new Mesh());
 
 		//Positions
 		tinygltf::Accessor accessor = model.accessors[primitive.attributes["POSITION"]];
@@ -101,29 +152,45 @@ void ModelLoader::ParseNodes(Model* finalModel, tinygltf::Model& model, tinygltf
 			finalMesh->index.push_back(index);
 		}
 
-		if (model.materials.size() > 0) {
-			//Material
-			tinygltf::Material& material = model.materials[primitive.material];
-
-			glm::vec3 baseColor{ static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0])
-								, static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1])
-								, static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]) };
-
-			finalMesh->albedo = baseColor;
-		}
-		else {
-			finalMesh->albedo = glm::vec3(1, 1, 1);
-		}
-		ParseTransformation(finalMesh, node);
+		ParseMaterial(finalMesh.get(), model, primitive);
+		ParseTransformation(finalMesh.get(), node);
 
 		finalMesh->meshName = node.name;
 
-		finalModel->meshes.push_back(finalMesh);
+		finalModel->meshes.push_back(std::move(finalMesh));
 	}
 
 	//for (auto mesh : finalModel->meshes)
 		//for (auto vtx : mesh->vertecies)
 			//finalModel->bounds.extend(vtx);
+}
+
+void ModelLoader::ParseMaterial(Mesh* finalMesh, tinygltf::Model& model, tinygltf::Primitive& primitive) {
+	//Does this mesh has a material?
+	if (model.materials.size() <= 0 || primitive.material < 0) {
+		finalMesh->albedo = glm::vec3(1, 1, 1);
+		return;
+	}
+
+	tinygltf::Material& material = model.materials[primitive.material];
+
+	//Textures
+	finalMesh->albedoTex = material.pbrMetallicRoughness.baseColorTexture.index;
+	finalMesh->metalRoughTex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+	finalMesh->normalTex = material.normalTexture.index;
+
+	//Material properties
+	finalMesh->metallic = material.pbrMetallicRoughness.metallicFactor;
+	finalMesh->roughness = material.pbrMetallicRoughness.roughnessFactor;
+
+	glm::vec3 baseColor{ static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[0])
+						, static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[1])
+						, static_cast<float>(material.pbrMetallicRoughness.baseColorFactor[2]) };
+
+	finalMesh->albedo = baseColor;
+
+	//Random Color for each Mesh
+	//finalMesh->albedo = glm::vec3(((float)std::rand()) / RAND_MAX, ((float)std::rand()) / RAND_MAX, ((float)std::rand()) / RAND_MAX);
 }
 
 void ModelLoader::ParseTransformation(Mesh* finalMesh, tinygltf::Node& node) {
@@ -134,7 +201,7 @@ void ModelLoader::ParseTransformation(Mesh* finalMesh, tinygltf::Node& node) {
 	else {
 		finalMesh->translation = glm::vec3(
 			node.translation[0], 
-			-node.translation[1], 
+			node.translation[1], 
 			node.translation[2]
 		);
 	}

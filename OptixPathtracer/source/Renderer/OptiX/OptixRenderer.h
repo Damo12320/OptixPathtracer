@@ -59,6 +59,10 @@ private:
     //! buffer that keeps the (final, compacted) accel structure
     CUDABuffer asBuffer;
 
+    //one texture object and pixel array per used texture
+    std::vector<cudaArray_t>         textureArrays;
+    std::vector<cudaTextureObject_t> textureObjects;
+
 public:
     Model* model;
 
@@ -101,4 +105,7 @@ private:
 
     /*! constructs the shader binding table */
     void BuildSBT();
+
+    /*! upload textures, and create cuda texture objects for them */
+    void CreateTextures();
 };

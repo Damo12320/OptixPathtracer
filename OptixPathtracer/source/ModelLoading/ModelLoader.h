@@ -6,10 +6,14 @@
 
 class ModelLoader {
 public:
-	static Model* LoadModel(std::string filePath);
+	static std::unique_ptr<Model> LoadModel(std::string folderPath, std::string fileName);
 
 private:
+	static void LoadTextures(Model* finalModel, tinygltf::Model& model, std::string& folderPath);
+
 	static void ParseScene(Model* finalModel, tinygltf::Model& model, tinygltf::Scene& scene);
 	static void ParseNodes(Model* finalModel, tinygltf::Model& model, tinygltf::Node& node);
+
+	static void ParseMaterial(Mesh* finalMesh, tinygltf::Model& model, tinygltf::Primitive& primitive);
 	static void ParseTransformation(Mesh* finalMesh, tinygltf::Node& node);
 };

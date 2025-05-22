@@ -33,6 +33,7 @@
     <ClInclude Include="source\ModelLoading\Mesh.h" />
     <ClInclude Include="source\ModelLoading\Model.h" />
     <ClInclude Include="source\ModelLoading\ModelLoader.h" />
+    <ClInclude Include="source\ModelLoading\Texture.h" />
     <ClInclude Include="source\Renderer\OpenGLWindow.h" />
     <ClInclude Include="source\Renderer\OptixViewTexture.h" />
     <ClInclude Include="source\Renderer\OptixView.h" />

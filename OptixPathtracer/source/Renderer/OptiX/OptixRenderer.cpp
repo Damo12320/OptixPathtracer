@@ -25,6 +25,8 @@ OptixRenderer::OptixRenderer(const std::string& ptxPath, Model* model) {
     //create programs pipline
     this->CreatePipeline();
 
+    this->CreateTextures();
+
     //build Shader Binding Table (which program does which raytype and what data does it have)
     this->BuildSBT();
 
@@ -451,8 +453,6 @@ OptixTraversableHandle OptixRenderer::BuildAccel()
     return asHandle;
 }
 
-
-
 #pragma region SBT_Structures
 /*! SBT record for a raygen program */
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord
@@ -517,19 +517,17 @@ void OptixRenderer::BuildSBT() {
     std::vector<HitgroupRecord> hitgroupRecords;
     for (int meshID = 0; meshID < numObjects; meshID++) {
         for (int rayID = 0; rayID < RAY_TYPE_COUNT; rayID++) {
-            auto mesh = model->meshes[meshID];
+            auto mesh = model->meshes[meshID].get();
 
             HitgroupRecord rec;
             OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayID], &rec));
             rec.data.color = mesh->albedo;
-            /*if (mesh->diffuseTextureID >= 0) {
+            //AlbedoTexture
+            rec.data.hasTexture = mesh->HasAlbedoTex();
+            if (mesh->HasAlbedoTex()) {
                 rec.data.hasTexture = true;
-                rec.data.texture = textureObjects[mesh->diffuseTextureID];
+                rec.data.texture = textureObjects[mesh->albedoTex];
             }
-            else {
-                rec.data.hasTexture = false;
-            }*/
-            rec.data.hasTexture = false;
             rec.data.index = (glm::ivec3*)indexBuffer[meshID].d_pointer();
             rec.data.vertex = (glm::vec3*)vertexBuffer[meshID].d_pointer();
             rec.data.normal = (glm::vec3*)normalBuffer[meshID].d_pointer();
@@ -541,6 +539,58 @@ void OptixRenderer::BuildSBT() {
     sbt.hitgroupRecordBase = hitgroupRecordsBuffer.d_pointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
     sbt.hitgroupRecordCount = (int)hitgroupRecords.size();
+}
+
+void OptixRenderer::CreateTextures() {
+    int numTextures = (int)model->textures.size();
+
+    textureArrays.resize(numTextures);
+    textureObjects.resize(numTextures);
+
+    for (int textureID = 0; textureID < numTextures; textureID++) {
+        auto texture = model->textures[textureID].get();
+
+        cudaResourceDesc res_desc = {};
+
+        cudaChannelFormatDesc channel_desc;
+        int32_t width = texture->resolution.x;
+        int32_t height = texture->resolution.y;
+        int32_t numComponents = 4;
+        int32_t pitch = width * numComponents * sizeof(uint8_t);
+        channel_desc = cudaCreateChannelDesc<uchar4>();
+
+        cudaArray_t& pixelArray = textureArrays[textureID];
+        CUDA_CHECK(MallocArray(&pixelArray,
+            &channel_desc,
+            width, height));
+
+        CUDA_CHECK(Memcpy2DToArray(pixelArray,
+            /* offset */0, 0,
+            texture->pixel,
+            pitch, pitch, height,
+            cudaMemcpyHostToDevice));
+
+        res_desc.resType = cudaResourceTypeArray;
+        res_desc.res.array.array = pixelArray;
+
+        cudaTextureDesc tex_desc = {};
+        tex_desc.addressMode[0] = cudaAddressModeWrap;
+        tex_desc.addressMode[1] = cudaAddressModeWrap;
+        tex_desc.filterMode = cudaFilterModeLinear;
+        tex_desc.readMode = cudaReadModeNormalizedFloat;
+        tex_desc.normalizedCoords = 1;
+        tex_desc.maxAnisotropy = 1;
+        tex_desc.maxMipmapLevelClamp = 99;
+        tex_desc.minMipmapLevelClamp = 0;
+        tex_desc.mipmapFilterMode = cudaFilterModePoint;
+        tex_desc.borderColor[0] = 1.0f;
+        tex_desc.sRGB = 0;
+
+        // Create texture object
+        cudaTextureObject_t cuda_tex = 0;
+        CUDA_CHECK(CreateTextureObject(&cuda_tex, &res_desc, &tex_desc, nullptr));
+        textureObjects[textureID] = cuda_tex;
+    }
 }
 
 #pragma endregion

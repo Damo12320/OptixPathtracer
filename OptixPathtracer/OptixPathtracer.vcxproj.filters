@@ -74,6 +74,9 @@
     <ClInclude Include="source\Renderer\OptiX\OptixHelpers.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="source\ModelLoading\Texture.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\Users\damia\Desktop\IDK-Engine\IDKEngine\Resource\Final Scenes Lights\3\untitled.bin">

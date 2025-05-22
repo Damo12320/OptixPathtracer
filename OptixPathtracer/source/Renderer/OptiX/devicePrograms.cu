@@ -131,7 +131,8 @@ extern "C" __global__ void __closesthit__radiance()
         = (1.f - u - v) * sbtData.vertex[index.x]
         + u * sbtData.vertex[index.y]
         + v * sbtData.vertex[index.z];
-    const glm::vec3 lightPos(-907.108f, 2205.875f, -400.0267f);
+    //const glm::vec3 lightPos(-907.108f, 2205.875f, -400.0267f);
+    const glm::vec3 lightPos(0, 500, 0);
     const glm::vec3 lightDir = lightPos - surfPos;
 
     // trace shadow ray:
@@ -189,14 +190,14 @@ extern "C" __global__ void __miss__radiance()
 {
     glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
     // set to constant white as background color
-    prd = glm::vec3(1, 0, 0);
+    prd = glm::vec3(1.f);
 }
 
 extern "C" __global__ void __miss__shadow()
 {
     // we didn't hit anything, so the light is visible
     glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
-    prd = glm::vec3(1);
+    prd = glm::vec3(1.f);
 }
 
 //------------------------------------------------------------------------------
@@ -248,10 +249,6 @@ extern "C" __global__ void __raygen__renderFrame()
     const int r = int(255.99f * pixelColorPRD.x);
     const int g = int(255.99f * pixelColorPRD.y);
     const int b = int(255.99f * pixelColorPRD.z);
-
-    /*const int r = int(0);
-    const int g = int(0);
-    const int b = int(255.99f);*/
 
     // convert to 32-bit rgba value (we explicitly set alpha to 0xff
     // to make stb_image_write happy ...

@@ -38,3 +38,15 @@ void Mesh::CalculateModelMatrix() {
 	this->ModelMatrix.erase(this->ModelMatrix.end() - 1);
 	this->ModelMatrix.erase(this->ModelMatrix.end() - 1);*/
 }
+
+bool Mesh::HasAlbedoTex() {
+	return this->albedoTex >= 0;
+}
+
+bool Mesh::HasNormalTex() {
+	return this->normalTex >= 0;
+}
+
+bool Mesh::HasMetalRoughTex() {
+	return this->metalRoughTex >= 0;
+}
