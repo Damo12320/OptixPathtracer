@@ -113,14 +113,14 @@ extern "C" __global__ void __closesthit__radiance()
     // compute diffuse material color, including diffuse texture, if
     // available
     // ------------------------------------------------------------------
-    glm::vec3 diffuseColor = sbtData.color;
-    if (sbtData.hasTexture && sbtData.texcoord) {
+    glm::vec3 diffuseColor = sbtData.albedoColor;
+    if (sbtData.hasAlbedoTexture && sbtData.texcoord) {
         const glm::vec2 tc
             = (1.f - u - v) * sbtData.texcoord[index.x]
             + u * sbtData.texcoord[index.y]
             + v * sbtData.texcoord[index.z];
 
-        glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.texture, tc.x, tc.y));
+        glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, tc.x, tc.y));
         diffuseColor *= glm::vec3(fromTexture.x, fromTexture.y, fromTexture.z);
     }
 

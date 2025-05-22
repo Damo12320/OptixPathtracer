@@ -521,13 +521,25 @@ void OptixRenderer::BuildSBT() {
 
             HitgroupRecord rec;
             OPTIX_CHECK(optixSbtRecordPackHeader(hitgroupPGs[rayID], &rec));
-            rec.data.color = mesh->albedo;
+            rec.data.albedoColor = mesh->albedo;
+            rec.data.roughness = mesh->roughness;
+            rec.data.metallic = mesh->metallic;
             //AlbedoTexture
-            rec.data.hasTexture = mesh->HasAlbedoTex();
+            rec.data.hasAlbedoTexture = mesh->HasAlbedoTex();
             if (mesh->HasAlbedoTex()) {
-                rec.data.hasTexture = true;
-                rec.data.texture = textureObjects[mesh->albedoTex];
+                rec.data.albedoTexture = textureObjects[mesh->albedoTex];
             }
+            //NormalTexture
+            rec.data.hasNormalTexture = mesh->HasAlbedoTex();
+            if (mesh->HasNormalTex()) {
+                rec.data.normalTexture = textureObjects[mesh->normalTex];
+            }
+            //MetalRoughTexture
+            rec.data.hasMetalRoughTexture = mesh->HasAlbedoTex();
+            if (mesh->HasMetalRoughTex()) {
+                rec.data.metalRoughTexture = textureObjects[mesh->metalRoughTex];
+            }
+
             rec.data.index = (glm::ivec3*)indexBuffer[meshID].d_pointer();
             rec.data.vertex = (glm::vec3*)vertexBuffer[meshID].d_pointer();
             rec.data.normal = (glm::vec3*)normalBuffer[meshID].d_pointer();
