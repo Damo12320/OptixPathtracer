@@ -28,9 +28,14 @@ OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* mo
 
 #pragma region Public
 
-void OptixView::Run() {
+void OptixView::Run(Camera& camera) {
+
 	//Render Loop
 	while (!glfwWindowShouldClose(this->window->window)) {
+		//camera.rotation = camera.rotation + glm::vec3(0, 1, 0);
+
+		this->optixRenderer->SetCamera(camera);
+
 		//Optix
 		this->DrawOptix();
 

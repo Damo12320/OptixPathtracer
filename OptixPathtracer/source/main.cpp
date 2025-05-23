@@ -17,11 +17,10 @@ int main()
     OptixView* optixView = new OptixView(viewDef, viewSize, model.get());
 
     Camera camera;
-    camera.at = glm::vec3(0, 2, 0);
-    camera.from = glm::vec3(5, 2, 0);
-    camera.up = glm::vec3(0, 1, 0);
+    //camera.position = glm::vec3(-0.977644f, 1.0745f, 0.366231f);
+    //camera.rotation = glm::vec3(90 - 89.1897, 180 + 77.765, 0);
+    camera.SetBlenderPosition(glm::vec3(-0.977644, -0.366231, 1.0745));
+    camera.SetBlenderRotation(glm::vec3(89.1897, 20, 77.765));
 
-    optixView->optixRenderer->SetCamera(camera);
-
-    optixView->Run();
+    optixView->Run(camera);
 }

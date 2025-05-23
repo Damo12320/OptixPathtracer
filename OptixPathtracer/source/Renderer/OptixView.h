@@ -21,7 +21,7 @@ private:
 public:
 	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model);
 
-	void Run();
+	void Run(Camera& camera);
 	void Resize(int width, int height);
 	void Resize(glm::ivec2 viewSize);
 

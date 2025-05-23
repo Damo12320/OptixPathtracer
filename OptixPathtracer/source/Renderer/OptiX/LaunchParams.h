@@ -14,9 +14,8 @@ struct LaunchParams
 
     struct {
         glm::vec3 position;
-        glm::vec3 direction;
-        glm::vec3 horizontal;
-        glm::vec3 vertical;
+        glm::mat4x4 inverseViewMatrix;
+        glm::mat4x4 inverseProjectionMatrix;
     } camera;
 
     OptixTraversableHandle traversable;

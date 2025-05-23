@@ -3,15 +3,7 @@
 #include "../../3rdParty/OptixSample/CUDABuffer.h"
 #include "LaunchParams.h"
 #include "../../ModelLoading/Model.h"
-
-struct Camera {
-    /*! camera position - *from* where we are looking */
-    glm::vec3 from;
-    /*! which point we are looking *at* */
-    glm::vec3 at;
-    /*! general up-vector */
-    glm::vec3 up;
-};
+#include "../Camera.h"
 
 class OptixRenderer {
 private:

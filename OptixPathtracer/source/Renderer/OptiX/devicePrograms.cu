@@ -220,24 +220,34 @@ extern "C" __global__ void __raygen__renderFrame()
     uint32_t u0, u1;
     packPointer(&pixelColorPRD, u0, u1);
 
-    // normalized screen plane position, in [0,1]^2
-    const glm::vec2 screen(glm::vec2(ix + .5f, iy + .5f)
-        / glm::vec2(optixLaunchParams.frame.size));
+    // Calculate Ray from camera view and projection matrix---------------------------------------------------------------------------------------------------------
+    // From https://forums.developer.nvidia.com/t/rebuilding-opengl-camera-and-projection-parameters-in-optix/238362
+    
+    // X and Y in the projection plane through which the ray shall be shot
+    float x_screen = (static_cast<float>(ix) + .5f) / static_cast<float>(optixLaunchParams.frame.size.x);
+    float y_screen = (static_cast<float>(iy) + .5f) / static_cast<float>(optixLaunchParams.frame.size.y);
 
-    // generate ray direction
-    glm::vec3 rayDir = glm::normalize(camera.direction
-        + (screen.x - 0.5f) * camera.horizontal
-        + (screen.y - 0.5f) * camera.vertical);
+    // X and Y in normalized device coordinates
+    float x_ndc = x_screen * 2.f - 1.f;
+    float y_ndc = y_screen * 2.f - 1.f;
 
-    //rayDir = glm::normalize(camera.direction);
+    glm::vec4 homogenious_ndc = glm::vec4(x_ndc, y_ndc, 1.f, 1.f);
 
-    //printf("CUDA: %f, %f, %f \n", rayDir.x, rayDir.y, rayDir.z);
+    glm::vec4 p_viewspace = optixLaunchParams.camera.inverseProjectionMatrix * homogenious_ndc;
+
+    // Transform into world space but get rid of disturbing w-factor
+    glm::vec4 p_worldspace = optixLaunchParams.camera.inverseViewMatrix * glm::vec4(p_viewspace.x, p_viewspace.y, p_viewspace.z, 0.f);
+
+    glm::vec4 ray_dir = glm::normalize(p_worldspace);
+    glm::vec3 origin = optixLaunchParams.camera.position;
+
+    //----------------------------------------------------------------------------------------------------------
 
     optixTrace(optixLaunchParams.traversable,
-        OptixHelpers::Float3(camera.position),
-        OptixHelpers::Float3(rayDir),
-        0.f,    // tmin
-        1e20f,  // tmax
+        OptixHelpers::Float3(origin),
+        OptixHelpers::Float3(ray_dir),
+        0.1f,    // tmin
+        100.0f,  // tmax
         0.0f,   // rayTime
         OptixVisibilityMask(255),
         OPTIX_RAY_FLAG_DISABLE_ANYHIT,//OPTIX_RAY_FLAG_NONE,

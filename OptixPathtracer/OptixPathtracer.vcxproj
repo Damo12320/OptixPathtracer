@@ -22,6 +22,7 @@
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\ModelLoading\Mesh.cpp" />
     <ClCompile Include="source\ModelLoading\ModelLoader.cpp" />
+    <ClCompile Include="source\Renderer\Camera.cpp" />
     <ClCompile Include="source\Renderer\OpenGLWindow.cpp" />
     <ClCompile Include="source\Renderer\OptixViewTexture.cpp" />
     <ClCompile Include="source\Renderer\OptixView.cpp" />
@@ -34,6 +35,7 @@
     <ClInclude Include="source\ModelLoading\Model.h" />
     <ClInclude Include="source\ModelLoading\ModelLoader.h" />
     <ClInclude Include="source\ModelLoading\Texture.h" />
+    <ClInclude Include="source\Renderer\Camera.h" />
     <ClInclude Include="source\Renderer\OpenGLWindow.h" />
     <ClInclude Include="source\Renderer\OptixViewTexture.h" />
     <ClInclude Include="source\Renderer\OptixView.h" />

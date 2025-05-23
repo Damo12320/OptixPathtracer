@@ -32,10 +32,7 @@ OptixRenderer::OptixRenderer(const std::string& ptxPath, Model* model) {
 
     launchParamsBuffer.alloc(sizeof(launchParams));
 
-    launchParams.camera.direction = glm::vec3(1, 0, 0);
-    launchParams.camera.horizontal = glm::vec3(1, 0, 0);
     launchParams.camera.position = glm::vec3(1, 0, 0);
-    launchParams.camera.vertical = glm::vec3(1, 0, 0);
 }
 
 #pragma region OptiX Initialization
@@ -652,11 +649,9 @@ void OptixRenderer::Resize(glm::ivec2& newSize) {
 }
 
 void OptixRenderer::SetCamera(Camera& camera) {
-    launchParams.camera.position = camera.from;
-    launchParams.camera.direction = glm::normalize(camera.at - camera.from);
-
-    const float cosFovy = 0.66f;
     const float aspect = launchParams.frame.size.x / float(launchParams.frame.size.y);
-    launchParams.camera.horizontal = cosFovy * aspect * glm::normalize(glm::cross(launchParams.camera.direction, camera.up));
-    launchParams.camera.vertical = cosFovy * glm::normalize(glm::cross(launchParams.camera.horizontal, launchParams.camera.direction));
+
+    launchParams.camera.position = camera.position;
+    launchParams.camera.inverseViewMatrix = glm::inverse(camera.GetViewMatrix());
+    launchParams.camera.inverseProjectionMatrix = glm::inverse(camera.GetProjectionMatrix(aspect));
 }
