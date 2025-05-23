@@ -65,6 +65,36 @@ static __forceinline__ __device__ T* getPRD()
 // one group of them to set up the SBT)
 //------------------------------------------------------------------------------
 
+__device__ bool AlphaCutout() {
+    const MeshSBTData& sbtData
+        = *(const MeshSBTData*)optixGetSbtDataPointer();
+
+    // ------------------------------------------------------------------
+    // gather some basic hit information
+    // ------------------------------------------------------------------
+    const int   primID = optixGetPrimitiveIndex();
+    const glm::ivec3 index = sbtData.index[primID];
+    const float u = optixGetTriangleBarycentrics().x;
+    const float v = optixGetTriangleBarycentrics().y;
+
+    // ------------------------------------------------------------------
+    // compute diffuse material color, including diffuse texture, if
+    // available
+    // ------------------------------------------------------------------
+    if (sbtData.hasAlbedoTexture && sbtData.texcoord) {
+        const glm::vec2 tc
+            = (1.f - u - v) * sbtData.texcoord[index.x]
+            + u * sbtData.texcoord[index.y]
+            + v * sbtData.texcoord[index.z];
+
+        glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, tc.x, tc.y));
+
+        return fromTexture.a < 0.001;
+    }
+
+    return false;
+}
+
 extern "C" __global__ void __closesthit__shadow()
 {
     /* not going to be used ... */
@@ -171,11 +201,17 @@ extern "C" __global__ void __closesthit__radiance()
 }
 
 extern "C" __global__ void __anyhit__radiance()
-{ /*! for this simple example, this will remain empty */
+{ 
+    if (AlphaCutout()) {
+        optixIgnoreIntersection();
+    }
 }
 
 extern "C" __global__ void __anyhit__shadow()
-{ /*! not going to be used */
+{
+    if (AlphaCutout()) {
+        optixIgnoreIntersection();
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -250,7 +286,7 @@ extern "C" __global__ void __raygen__renderFrame()
         100.0f,  // tmax
         0.0f,   // rayTime
         OptixVisibilityMask(255),
-        OPTIX_RAY_FLAG_DISABLE_ANYHIT,//OPTIX_RAY_FLAG_NONE,
+        OPTIX_RAY_FLAG_NONE,//OPTIX_RAY_FLAG_NONE,OPTIX_RAY_FLAG_DISABLE_ANYHIT
         RADIANCE_RAY_TYPE,            // SBT offset
         RAY_TYPE_COUNT,               // SBT stride
         RADIANCE_RAY_TYPE,            // missSBTIndex 

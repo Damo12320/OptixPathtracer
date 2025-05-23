@@ -153,6 +153,7 @@
     </CudaCompile>
     <CudaCompile>
       <NvccCompilation>ptx</NvccCompilation>
+      <AdditionalOptions>-lineinfo %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)x64\Debug\*.ptx" "$(ProjectDir)source\Renderer\OptiX"</Command>
