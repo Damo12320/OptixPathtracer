@@ -648,10 +648,10 @@ void OptixRenderer::Resize(glm::ivec2& newSize) {
     this->launchParams.frame.colorBuffer = (uint32_t*)colorBuffer.d_pointer();
 }
 
-void OptixRenderer::SetCamera(Camera& camera) {
+void OptixRenderer::SetCamera(Camera* camera) {
     const float aspect = launchParams.frame.size.x / float(launchParams.frame.size.y);
 
-    launchParams.camera.position = camera.position;
-    launchParams.camera.inverseViewMatrix = glm::inverse(camera.GetViewMatrix());
-    launchParams.camera.inverseProjectionMatrix = glm::inverse(camera.GetProjectionMatrix(aspect));
+    launchParams.camera.position = camera->position;
+    launchParams.camera.inverseViewMatrix = glm::inverse(camera->GetViewMatrix());
+    launchParams.camera.inverseProjectionMatrix = glm::inverse(camera->GetProjectionMatrix(aspect));
 }

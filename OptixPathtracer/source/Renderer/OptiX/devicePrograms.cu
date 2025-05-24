@@ -97,7 +97,41 @@ __device__ bool AlphaCutout() {
 
 extern "C" __global__ void __closesthit__shadow()
 {
-    /* not going to be used ... */
+    const MeshSBTData& sbtData
+        = *(const MeshSBTData*)optixGetSbtDataPointer();
+
+    // ------------------------------------------------------------------
+    // gather some basic hit information
+    // ------------------------------------------------------------------
+    const int   primID = optixGetPrimitiveIndex();
+    const glm::ivec3 index = sbtData.index[primID];
+    const float u = optixGetTriangleBarycentrics().x;
+    const float v = optixGetTriangleBarycentrics().y;
+
+    const glm::vec3 surfPos
+        = (1.f - u - v) * sbtData.vertex[index.x]
+        + u * sbtData.vertex[index.y]
+        + v * sbtData.vertex[index.z];
+
+
+    float tmax = optixGetRayTmax();
+    glm::vec3 rayOrigin = OptixHelpers::Vec3(optixGetWorldRayOrigin());
+
+    glm::vec3 traveledPath = surfPos - rayOrigin;
+    float distance = glm::length(traveledPath);
+
+    const glm::vec3 lightPos(0, 2, 3);
+    const glm::vec3 rayDir = lightPos - rayOrigin;
+
+    //Get per ray data (to store the shadowing)
+    glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
+
+    if (distance < glm::length(rayDir)) {
+        prd = glm::vec3(0.f);
+    }
+    else {
+        prd = glm::vec3(1.f);
+    }
 }
 
 extern "C" __global__ void __closesthit__radiance()
@@ -162,7 +196,7 @@ extern "C" __global__ void __closesthit__radiance()
         + u * sbtData.vertex[index.y]
         + v * sbtData.vertex[index.z];
     //const glm::vec3 lightPos(-907.108f, 2205.875f, -400.0267f);
-    const glm::vec3 lightPos(0, 500, 0);
+    const glm::vec3 lightPos(0, 2, 3);
     const glm::vec3 lightDir = lightPos - surfPos;
 
     // trace shadow ray:
@@ -174,15 +208,14 @@ extern "C" __global__ void __closesthit__radiance()
         OptixHelpers::Float3(surfPos + 1e-3f * Ng),
         OptixHelpers::Float3(lightDir),
         1e-3f,      // tmin
-        1.f - 1e-3f,  // tmax
+        100,  // tmax
         0.0f,       // rayTime
         OptixVisibilityMask(255),
         // For shadow rays: skip any/closest hit shaders and terminate on first
         // intersection with anything. The miss shader is used to mark if the
         // light was visible.
         OPTIX_RAY_FLAG_DISABLE_ANYHIT
-        | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT
-        | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT,
+        | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT,
         SHADOW_RAY_TYPE,            // SBT offset
         RAY_TYPE_COUNT,               // SBT stride
         SHADOW_RAY_TYPE,            // missSBTIndex 

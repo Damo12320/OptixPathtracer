@@ -1,7 +1,7 @@
 #include "OptixView.h"
 #include <iostream>
 
-//What should happen when the Window resizes
+#pragma region GLFW_Callbacks
 static void OnWindowResize(GLFWwindow* window, int width, int height) {
 	OptixView* optixView = static_cast<OptixView*>(glfwGetWindowUserPointer(window));
 	assert(optixView);
@@ -10,13 +10,84 @@ static void OnWindowResize(GLFWwindow* window, int width, int height) {
 	optixView->Resize(width, height);
 }
 
+static void OnCursorMove(GLFWwindow* window, double x, double y) {
+	OptixView* optixView = static_cast<OptixView*>(glfwGetWindowUserPointer(window));
+	assert(optixView);
+
+	if (optixView->isCameraMoving) {
+		glm::vec2 mouseDelta = glm::vec2(x, y) - optixView->window->lastCursorPosition;
+
+		Camera* camera = optixView->camera.get();
+		glm::vec3 rotationDiff = glm::vec3(mouseDelta.y, -mouseDelta.x, 0) * 0.1f;
+
+		camera->rotation += rotationDiff;
+		camera->rotation.x = glm::clamp<float>(camera->rotation.x, -80, 80);
+	}
 
 
+	optixView->window->lastCursorPosition = glm::vec2(x, y);
+}
 
-OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model) {
+static void OnMouseButton(GLFWwindow* window, int button, int action, int mods) {
+	OptixView* optixView = static_cast<OptixView*>(glfwGetWindowUserPointer(window));
+	assert(optixView);
+
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+		optixView->isCameraMoving = true;
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	}
+	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
+		optixView->isCameraMoving = false;
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+}
+
+static void OnKeyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if (action != GLFW_PRESS) {
+		return;
+	}
+
+	OptixView* optixView = static_cast<OptixView*>(glfwGetWindowUserPointer(window));
+	assert(optixView);
+
+	//Camera Movement
+	Camera* camera = optixView->camera.get();
+	glm::vec3 movement = glm::vec3(0);
+	if (key == 'w' || key == 'W') {
+		movement += camera->GetForward();
+	}
+	else if (key == 's' || key == 'S') {
+		movement -= camera->GetForward();
+	}
+
+	if (key == 'd' || key == 'D') {
+		movement += camera->GetRight();
+	}
+	else if (key == 'a' || key == 'A') {
+		movement -= camera->GetRight();
+	}
+
+	if (key == GLFW_KEY_SPACE) {
+		movement += camera->worldUp;
+	}
+	else if (key == GLFW_KEY_LEFT_SHIFT) {
+		movement -= camera->worldUp;
+	}
+
+	if (glm::length(movement) != 0) {
+		movement = glm::normalize(movement);
+	}
+	camera->position += movement;
+}
+#pragma endregion
+
+
+OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera) {
 	this->window = std::unique_ptr<OpenGLWindow>(new OpenGLWindow(viewSize));
 	this->optixRenderer = std::unique_ptr<OptixRenderer>(new OptixRenderer(viewDef.ptxPath, model));
 	this->viewTexture = std::unique_ptr<OptixViewTexture>(new OptixViewTexture());
+
+	this->camera = std::move(camera);
 
 	this->viewSize = viewSize;
 	this->Resize(viewSize);
@@ -24,17 +95,25 @@ OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* mo
 	//Set this view as a custom Pointer for the window
 	glfwSetWindowUserPointer(this->window->window, this);
 	glfwSetFramebufferSizeCallback(this->window->window, OnWindowResize);
+
+	glfwSetMouseButtonCallback(this->window->window, OnMouseButton);
+	glfwSetCursorPosCallback(this->window->window, OnCursorMove);
+	glfwSetKeyCallback(this->window->window, OnKeyPressed);
+
+	if (glfwRawMouseMotionSupported()) {
+		glfwSetInputMode(this->window->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	}
 }
 
 #pragma region Public
 
-void OptixView::Run(Camera& camera) {
+void OptixView::Run() {
 
 	//Render Loop
 	while (!glfwWindowShouldClose(this->window->window)) {
-		//camera.rotation = camera.rotation + glm::vec3(0, 1, 0);
+		//camera->rotation = camera->rotation + glm::vec3(0, 0.3, 0);
 
-		this->optixRenderer->SetCamera(camera);
+		this->optixRenderer->SetCamera(this->camera.get());
 
 		//Optix
 		this->DrawOptix();

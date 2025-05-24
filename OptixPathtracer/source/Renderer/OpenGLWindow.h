@@ -10,9 +10,10 @@
 
 class OpenGLWindow {
 public:
+	glm::vec2 lastCursorPosition;
+public:
 	OpenGLWindow(glm::ivec2 viewSize);
 	~OpenGLWindow();
 
 	GLFWwindow* window;
-
 };

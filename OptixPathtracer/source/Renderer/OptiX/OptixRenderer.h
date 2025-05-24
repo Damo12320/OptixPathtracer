@@ -66,7 +66,7 @@ public:
 
     void Render(uint32_t h_pixels[]);
 
-    void SetCamera(Camera& camera);
+    void SetCamera(Camera* camera);
 
 private:
     /*! helper function that initializes optix and checks for errors */

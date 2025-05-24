@@ -14,14 +14,17 @@ class OptixView {
 public:
 	std::unique_ptr<OpenGLWindow> window;
 	std::unique_ptr<OptixRenderer> optixRenderer;
+	std::unique_ptr<Camera> camera;
 
 	glm::ivec2 viewSize;
+
+	bool isCameraMoving = false;
 private:
 	std::unique_ptr<OptixViewTexture> viewTexture;
 public:
-	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model);
+	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera);
 
-	void Run(Camera& camera);
+	void Run();
 	void Resize(int width, int height);
 	void Resize(glm::ivec2 viewSize);
 

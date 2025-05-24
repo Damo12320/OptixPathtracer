@@ -13,14 +13,15 @@ int main()
     OptixViewDefinition viewDef;
     viewDef.ptxPath = "source/Renderer/OptiX/devicePrograms.cu.ptx";
 
-    glm::ivec2 viewSize{ 1920, 1080 };
-    OptixView* optixView = new OptixView(viewDef, viewSize, model.get());
 
-    Camera camera;
+    std::unique_ptr<Camera> camera = std::unique_ptr<Camera>(new Camera());
     //camera.position = glm::vec3(-0.977644f, 1.0745f, 0.366231f);
     //camera.rotation = glm::vec3(90 - 89.1897, 180 + 77.765, 0);
-    camera.SetBlenderPosition(glm::vec3(-0.977644, -0.366231, 1.0745));
-    camera.SetBlenderRotation(glm::vec3(89.1897, 20, 77.765));
+    camera->SetBlenderPosition(glm::vec3(-0.977644, -0.366231, 1.0745));
+    camera->SetBlenderRotation(glm::vec3(89.1897, 20, 77.765));
 
-    optixView->Run(camera);
+    glm::ivec2 viewSize{ 1920, 1080 };
+    OptixView* optixView = new OptixView(viewDef, viewSize, model.get(), std::move(camera));
+
+    optixView->Run();
 }
