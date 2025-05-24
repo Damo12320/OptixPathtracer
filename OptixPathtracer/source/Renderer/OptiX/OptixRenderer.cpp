@@ -541,6 +541,7 @@ void OptixRenderer::BuildSBT() {
             rec.data.vertex = (glm::vec3*)vertexBuffer[meshID].d_pointer();
             rec.data.normal = (glm::vec3*)normalBuffer[meshID].d_pointer();
             rec.data.texcoord = (glm::vec2*)texcoordBuffer[meshID].d_pointer();
+            rec.data.modelMatrix = mesh->GetModelMatrix();
             hitgroupRecords.push_back(rec);
         }
     }
