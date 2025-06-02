@@ -45,6 +45,9 @@ private:
     std::vector<CUDABuffer> texcoordBuffer;
     std::vector<CUDABuffer> indexBuffer;
 
+    std::vector<CUDABuffer> tangentsBuffer;
+    std::vector<CUDABuffer> bitangentsBuffer;
+
     std::vector<CUDABuffer> matrices;
     /*! @} */
 

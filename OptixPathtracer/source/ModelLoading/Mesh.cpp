@@ -39,6 +39,47 @@ void Mesh::CalculateModelMatrix() {
 	this->ModelMatrix.erase(this->ModelMatrix.end() - 1);*/
 }
 
+void Mesh::CalculateTangentBasis() {
+	this->tangents = std::vector<glm::vec3>();
+	this->tangents.resize(this->vertecies.size());
+
+	this->bitangents = std::vector<glm::vec3>();
+	this->bitangents.resize(this->vertecies.size());
+
+	for (int i = 0; i < this->index.size(); i++)
+	{
+		glm::vec3 v0 = this->vertecies[this->index[i].x];
+		glm::vec3 v1 = this->vertecies[this->index[i].y];
+		glm::vec3 v2 = this->vertecies[this->index[i].z];
+
+		glm::vec2 uv0 = this->texCoord[this->index[i].x];
+		glm::vec2 uv1 = this->texCoord[this->index[i].y];
+		glm::vec2 uv2 = this->texCoord[this->index[i].z];
+
+		glm::vec3 deltaPos1 = v1 - v0;
+		glm::vec3 deltaPos2 = v2 - v0;
+
+		glm::vec2 deltaUV1 = uv1 - uv0;
+		glm::vec2 deltaUV2 = uv2 - uv0;
+
+		float r = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+		glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+		glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+
+		tangent = glm::normalize(tangent);
+		bitangent = glm::normalize(bitangent);
+
+
+		this->tangents[this->index[i].x] = tangent;
+		this->tangents[this->index[i].y] = tangent;
+		this->tangents[this->index[i].z] = tangent;
+
+		this->bitangents[this->index[i].x] = bitangent;
+		this->bitangents[this->index[i].y] = bitangent;
+		this->bitangents[this->index[i].z] = bitangent;
+	}
+}
+
 bool Mesh::HasAlbedoTex() {
 	return this->albedoTex >= 0;
 }

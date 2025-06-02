@@ -23,6 +23,11 @@
 #include "LaunchParams.h"
 #include "MeshSBTData.h"
 #include "OptixHelpers.h"
+#include "random.h"
+
+#include "Lights.h"
+#include "MinimalAgX.h"
+#include "AgxDS.h"
 
 
 
@@ -30,6 +35,38 @@
         optixLaunch (this gets filled in from the buffer we pass to
         optixLaunch) */
 extern "C" __constant__ LaunchParams optixLaunchParams;
+
+
+struct RadianceRayData {
+    glm::vec3 radiance;
+    glm::vec3 beta;
+
+    glm::vec3 nextOrigin;
+    glm::vec3 nextDirection;
+
+    int bounceCounter;
+    int maxBounces;
+
+    unsigned int randomSeed;
+
+    bool isDebugRay;
+};
+
+struct Surface {
+    glm::vec3 gNormal, sNormal;
+    glm::ivec3 index;
+    glm::vec3 vertices[3];
+    glm::vec3 position;
+    glm::vec2 texCoord;
+
+    glm::vec3 incommingRay;
+
+    float metallic, roughness;
+
+    glm::vec3 albedo;
+};
+
+#pragma region PtrPacking
 
 static __forceinline__ __device__
 void* unpackPointer(uint32_t i0, uint32_t i1)
@@ -47,13 +84,63 @@ void  packPointer(void* ptr, uint32_t& i0, uint32_t& i1)
     i1 = uptr & 0x00000000ffffffff;
 }
 
+#pragma endregion
+
+
+#pragma region PerRayDataGetters
+
 template<typename T>
-static __forceinline__ __device__ T* getPRD()
+static __forceinline__ __device__ T* getPRD_1()
 {
     const uint32_t u0 = optixGetPayload_0();
     const uint32_t u1 = optixGetPayload_1();
     return reinterpret_cast<T*>(unpackPointer(u0, u1));
 }
+
+//template<typename T>
+//static __forceinline__ __device__ T* getPRD_2()
+//{
+//    const uint32_t u0 = optixGetPayload_2();
+//    const uint32_t u1 = optixGetPayload_3();
+//    return reinterpret_cast<T*>(unpackPointer(u0, u1));
+//}
+
+//template<typename T>
+//static __forceinline__ __device__ T* getPRD_3()
+//{
+//    const uint32_t u0 = optixGetPayload_4();
+//    const uint32_t u1 = optixGetPayload_5();
+//    return reinterpret_cast<T*>(unpackPointer(u0, u1));
+//}
+
+#pragma endregion
+
+
+#pragma region DebugMethods
+
+__device__ void Print(const char* name, glm::vec3 vec) {
+    printf("%s : %f, %f, %f \n", name, vec.r, vec.g, vec.b);
+}
+
+__device__ void Print(const char* name, glm::vec3 vec, int bounce) {
+    printf("Bounce %i: %s : %f, %f, %f \n", bounce, name, vec.r, vec.g, vec.b);
+}
+
+__device__ void Print(const char* name, float value) {
+    printf("%s : %f \n", name, value);
+}
+
+__device__ void Print(const char* name, float value, int bounce) {
+    printf("Bounce %i: %s : %f \n", bounce, name, value);
+}
+
+__device__ bool isnan(glm::vec3 vec) {
+    return isnan(vec.x) || isnan(vec.y) || isnan(vec.z);
+}
+
+#pragma endregion
+
+
 
 //------------------------------------------------------------------------------
 // closest hit and anyhit programs for radiance-type rays.
@@ -64,6 +151,323 @@ static __forceinline__ __device__ T* getPRD()
 // create a single, dummy, set of them (we do have to have at least
 // one group of them to set up the SBT)
 //------------------------------------------------------------------------------
+
+extern "C" __global__ void __closesthit__shadow()
+{
+    //only decoration (not needed, but coherent)
+}
+
+
+
+__device__ void GetVertices(MeshSBTData& sbtData, Surface& surface) {
+    surface.vertices[0] = sbtData.modelMatrix * glm::vec4(sbtData.vertex[surface.index.x], 1);
+    surface.vertices[1] = sbtData.modelMatrix * glm::vec4(sbtData.vertex[surface.index.y], 1);
+    surface.vertices[2] = sbtData.modelMatrix * glm::vec4(sbtData.vertex[surface.index.z], 1);
+}
+
+__device__ void GetNormal(MeshSBTData& sbtData, Surface& surface) {
+    const float u = optixGetTriangleBarycentrics().x;
+    const float v = optixGetTriangleBarycentrics().y;
+
+    // ------------------------------------------------------------------
+    // compute normal, using either shading normal (if avail), or
+    // geometry normal (fallback)
+    // ------------------------------------------------------------------
+
+    glm::vec3 Ng = cross(surface.vertices[1] - surface.vertices[0], surface.vertices[2] - surface.vertices[0]);
+    //glm::vec3 Ng = cross(B - A, C - A);
+    glm::vec3 Ns = (sbtData.normal)
+        ? ((1.f - u - v) * sbtData.normal[surface.index.x]
+            + u * sbtData.normal[surface.index.y]
+            + v * sbtData.normal[surface.index.z])
+        : Ng;
+
+    // ------------------------------------------------------------------
+    // face-forward and normalize normals
+    // ------------------------------------------------------------------
+
+    if (dot(surface.incommingRay, Ng) > 0.f) Ng = -Ng;
+    Ng = normalize(Ng);
+
+    if (dot(Ng, Ns) < 0.f)
+        Ns -= 2.f * dot(Ng, Ns) * Ng;
+    Ns = normalize(Ns);
+    
+    //surface.gNormal = glm::normalize( glm::transpose(glm::inverse(sbtData.modelMatrix)) * glm::vec4(Ng, 0.0) );
+    //surface.sNormal = glm::normalize( glm::transpose(glm::inverse(sbtData.modelMatrix)) * glm::vec4(Ns, 0.0) );
+
+
+    surface.gNormal = glm::normalize( sbtData.modelMatrix * glm::vec4(Ng, 0.0));
+    surface.sNormal = glm::normalize( sbtData.modelMatrix * glm::vec4(Ns, 0.0));
+}
+
+__device__ glm::vec3 GetSurfacePos(glm::vec3* vertices) {
+    const float u = optixGetTriangleBarycentrics().x;
+    const float v = optixGetTriangleBarycentrics().y;
+
+    glm::vec3 surfPos
+        = (1.f - u - v) * vertices[0]
+        + u * vertices[1]
+        + v * vertices[2];
+
+    return surfPos;
+}
+
+__device__ glm::vec2 GetTextureCoord(MeshSBTData& sbtData, glm::ivec3 index) {
+    const float u = optixGetTriangleBarycentrics().x;
+    const float v = optixGetTriangleBarycentrics().y;
+
+    glm::vec2 tc
+        = (1.f - u - v) * sbtData.texcoord[index.x]
+        + u * sbtData.texcoord[index.y]
+        + v * sbtData.texcoord[index.z];
+
+    return tc;
+}
+
+__device__ void SampleTextures(MeshSBTData& sbtData, glm::vec3& texNormal, Surface& surface) {
+    // ------------------------------------------------------------------
+    // Get Texture parameters
+    // ------------------------------------------------------------------
+    float x = surface.texCoord.x;
+    float y = surface.texCoord.y;
+
+    if (sbtData.hasAlbedoTexture) {
+        glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, x, y));
+        surface.albedo *= glm::vec3(fromTexture.x, fromTexture.y, fromTexture.z);
+    }
+
+    if (sbtData.hasNormalTexture) {
+        glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.normalTexture, x, y));
+        texNormal = glm::vec3(fromTexture.x, fromTexture.y, fromTexture.z);
+    }
+
+    if (sbtData.hasMetalRoughTexture) {
+        glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.metalRoughTexture, x, y));
+        surface.metallic = fromTexture.r;
+        surface.roughness = fromTexture.g;
+    }
+}
+
+__device__ void NormalMapping(MeshSBTData& sbtData, Surface& surface, glm::vec3 normalTex) {
+    if (!sbtData.normal || normalTex == glm::vec3(0)) {
+        return;
+    }
+
+    //worldspace TBN
+    const float u = optixGetTriangleBarycentrics().x;
+    const float v = optixGetTriangleBarycentrics().y;
+
+
+    glm::vec3 tangent = 
+        (1.f - u - v)   * sbtData.tangents[surface.index.x]
+        + u             * sbtData.tangents[surface.index.y]
+        + v             * sbtData.tangents[surface.index.z];
+
+    glm::vec3 bitangent =
+        (1.f - u - v)   * sbtData.bitangents[surface.index.x]
+        + u             * sbtData.bitangents[surface.index.y]
+        + v             * sbtData.bitangents[surface.index.z];
+
+
+    glm::vec3 T = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(tangent, 0.0)));
+    glm::vec3 B = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(bitangent, 0.0)));
+    glm::vec3 N = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(surface.sNormal, 0.0)));
+    glm::mat3 fragTBN = glm::mat3(T, B, N);
+
+    glm::vec3 normal = normalTex * glm::vec3(2.0) - glm::vec3(1.0);
+    surface.sNormal = glm::normalize(fragTBN * normal);
+}
+
+#pragma region RayTracingMethods
+
+__device__ float LightVisibility(glm::vec3 pointLightPos, glm::vec3 surfPos, glm::vec3 normal, glm::vec3& lightDirection) {
+    glm::vec3 lightDir = pointLightPos - surfPos;
+    lightDirection = glm::normalize(lightDir);
+
+    float lightVisibility = 0;
+    // the values we store the PRD pointer in:
+    uint32_t u0, u1;
+    packPointer(&lightVisibility, u0, u1);
+    optixTrace(optixLaunchParams.traversable,
+        OptixHelpers::Float3(surfPos + 1e-3f * normal),
+        OptixHelpers::Float3(glm::normalize(lightDir)),
+        0,      // tmin
+        glm::length(lightDir),  // tmax
+        0.0f,       // rayTime
+        OptixVisibilityMask(255),
+        // For shadow rays: skip any/closest hit shaders and terminate on first
+        // intersection with anything. The miss shader is used to mark if the
+        // light was visible.
+        OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT,
+        SHADOW_RAY_TYPE,            // SBT offset
+        RAY_TYPE_COUNT,               // SBT stride
+        SHADOW_RAY_TYPE,            // missSBTIndex 
+        u0, u1);
+
+    return lightVisibility;
+}
+
+__device__ void TraceRadiance(glm::vec3 rayOrigin, glm::vec3 rayDirection, float minDistance, float maxDistance, RadianceRayData* rayData) {
+    // the values we store the pixelColor pointer in:
+    uint32_t dataPtr0, dataPtr1;
+    packPointer(rayData, dataPtr0, dataPtr1);
+
+    optixTrace(optixLaunchParams.traversable,
+        OptixHelpers::Float3(rayOrigin),
+        OptixHelpers::Float3(rayDirection),
+        minDistance,    // tmin
+        maxDistance,  // tmax
+        0.0f,   // rayTime
+        OptixVisibilityMask(255),
+        OPTIX_RAY_FLAG_NONE,//OPTIX_RAY_FLAG_NONE,OPTIX_RAY_FLAG_DISABLE_ANYHIT
+        RADIANCE_RAY_TYPE,            // SBT offset
+        RAY_TYPE_COUNT,               // SBT stride
+        RADIANCE_RAY_TYPE,            // missSBTIndex 
+        dataPtr0, dataPtr1);
+}
+
+#pragma endregion
+
+#pragma region RandomDirections
+
+__device__ glm::vec2 Hash2(unsigned int& seed)
+{
+    seed += 1;
+    float s1 = static_cast<float>(seed);
+    seed += 1;
+    float s2 = static_cast<float>(seed);
+
+    float x = sinf(s1) * 43758.5453123f;
+    float y = sinf(s2) * 22578.1459123f;
+
+    return glm::vec2(x - floorf(x), y - floorf(y)); // fract
+}
+
+__device__  glm::vec3 RandomSphereDirection(unsigned int& seed) {
+    //glm::vec2 h = Hash2(seed) * glm::vec2(2.0, 6.28318530718) - glm::vec2(1, 0);
+    glm::vec2 h = glm::vec2(RandomOptix::rnd(seed), RandomOptix::rnd(seed));
+    float phi = h.y;
+
+    float temp = sqrtf(1.0f - h.x * h.x);
+    float sinPhi = sinf(phi);
+    float cosPhi = cosf(phi);
+
+    return glm::vec3(temp * sinPhi, temp * cosPhi, h.x);
+}
+
+__device__ glm::vec3 RandomHemisphereDirection(unsigned int& seed, const glm::vec3 n) {
+    glm::vec3 dir = glm::normalize(RandomSphereDirection(seed));
+
+    // Wenn die Richtung unterhalb der Fläche liegt, spiegle sie
+    if (glm::dot(dir, n) < 0.0f) {
+        dir = -dir;
+    }
+    return dir;
+}
+
+#pragma endregion
+
+__device__ glm::vec3 GetNewRayDirection(unsigned int& seed, glm::vec3 normal) {
+    return RandomHemisphereDirection(seed, normal);
+}
+
+__device__ glm::vec3 BRDF(Surface& surface, const glm::vec3 outgoingRay) {
+    //Diffuse
+    return surface.albedo / 3.14159265359f;
+}
+
+extern "C" __global__ void __closesthit__radiance()
+{
+    MeshSBTData& sbtData = *(MeshSBTData*)optixGetSbtDataPointer();
+
+    Surface surface;
+
+    // ------------------------------------------------------------------
+    // gather some basic hit information
+    // ------------------------------------------------------------------
+    surface.incommingRay = OptixHelpers::Vec3(optixGetWorldRayDirection());
+
+    const int primID = optixGetPrimitiveIndex();
+    surface.index = sbtData.index[primID];
+
+    //Vertices
+    glm::vec3 vertices[3];
+    GetVertices(sbtData, surface);
+    //Normal
+    GetNormal(sbtData, surface);
+    //Surface Position
+    surface.position = GetSurfacePos(surface.vertices);
+    //Texture Coord
+    surface.texCoord = GetTextureCoord(sbtData, surface.index);
+
+    RadianceRayData* rayData = (RadianceRayData*)getPRD_1<RadianceRayData>();
+
+
+    // ------------------------------------------------------------------
+    // Get Texture parameters
+    // ------------------------------------------------------------------
+    surface.albedo = sbtData.albedoColor;
+    glm::vec3 normalTex = glm::vec3(0);
+    surface.metallic = sbtData.metallic;
+    surface.roughness = sbtData.roughness;
+    SampleTextures(sbtData, normalTex, surface);
+
+    NormalMapping(sbtData, surface, normalTex);
+
+    //------------------------------------------------------------------------------------------
+
+    //Return if maximum depth is reached
+    rayData->bounceCounter++;
+    if (rayData->bounceCounter >= rayData->maxBounces) {
+        return;
+    }
+
+    //Sample direct lighting (pointlight)
+    PointLight pointLight;
+    pointLight.position = glm::vec3(0, 2, 0);
+    pointLight.color = glm::vec3(100);
+
+    glm::vec3 lightDirection;
+    const float lightVisibility = LightVisibility(pointLight.position, surface.position, surface.gNormal, lightDirection);
+
+    if (lightVisibility > 0) {
+        glm::vec3 spectrum = (BRDF(surface, lightDirection)) * fabsf(glm::dot(lightDirection, surface.sNormal));
+
+        rayData->radiance += ( rayData->beta * spectrum * pointLight.GetSample(surface.position) ) / (1 * pointLight.GetPDF());// ( sampleWeight * surface * light ) / light propability * PDF
+
+        if (rayData->isDebugRay) {
+            Print("added Radiance", (BRDF(surface, lightDirection)) * fabsf(glm::dot(lightDirection, surface.sNormal)), rayData->bounceCounter);
+        }
+    }
+
+
+    //Sample outgoing direction
+    glm::vec3 newRayDirection = GetNewRayDirection(rayData->randomSeed, surface.sNormal);
+
+    const float pdfRandomHemisphere = 1 / (2 * 3.141592654f);//https://ameye.dev/notes/sampling-the-hemisphere/
+
+    float cosTheta = fabsf(glm::dot(newRayDirection, surface.sNormal));
+
+    rayData->beta *= ( BRDF(surface, newRayDirection) * cosTheta ) / pdfRandomHemisphere;
+
+    if (rayData->isDebugRay) {
+        //Print("Radiance", rayData->radiance, rayData->bounceCounter);
+        //Print("Beta", rayData->beta, rayData->bounceCounter);
+        //Print("CosTheta", cosTheta, rayData->bounceCounter);
+        //Print("Light visibility", lightVisibility, rayData->bounceCounter);
+    }
+
+    //glm::vec3 newRayOrigin = surface.position + 1e-3f * surface.sNormal;
+    //TraceRadiance(newRayOrigin, newRayDirection, 0.0f, 100.0f, rayData);
+
+    rayData->nextOrigin = surface.position + 1e-3f * surface.gNormal;
+    rayData->nextDirection = newRayDirection;
+
+    //rayData->radiance = surface.sNormal;
+}
+
+#pragma region RayAnyhit
 
 __device__ bool AlphaCutout() {
     const MeshSBTData& sbtData
@@ -95,158 +499,8 @@ __device__ bool AlphaCutout() {
     return false;
 }
 
-extern "C" __global__ void __closesthit__shadow()
-{
-    //Get per ray data (to store the shadowing)
-    //glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
-    //prd = glm::vec3(0.f);
-
-    //const MeshSBTData& sbtData
-    //    = *(const MeshSBTData*)optixGetSbtDataPointer();
-
-    //// ------------------------------------------------------------------
-    //// gather some basic hit information
-    //// ------------------------------------------------------------------
-    //const int   primID = optixGetPrimitiveIndex();
-    //const glm::ivec3 index = sbtData.index[primID];
-    //const float u = optixGetTriangleBarycentrics().x;
-    //const float v = optixGetTriangleBarycentrics().y;
-
-    //const glm::vec3 surfPos
-    //    = (1.f - u - v) * sbtData.vertex[index.x]
-    //    + u * sbtData.vertex[index.y]
-    //    + v * sbtData.vertex[index.z];
-
-
-    //float tmax = optixGetRayTmax();
-    //glm::vec3 rayOrigin = OptixHelpers::Vec3(optixGetWorldRayOrigin());
-
-    //glm::vec3 traveledPath = surfPos - rayOrigin;
-    //float distance = glm::length(traveledPath);
-
-    //const glm::vec3 lightPos(0, 2, 3);
-    //const glm::vec3 rayDir = lightPos - rayOrigin;
-
-    ////Get per ray data (to store the shadowing)
-    //glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
-
-    //if (distance < glm::length(rayDir)) {
-    //    prd = glm::vec3(0.f);
-    //}
-    //else {
-    //    prd = glm::vec3(1.f);
-    //}
-}
-
-extern "C" __global__ void __closesthit__radiance()
-{
-    const MeshSBTData& sbtData
-        = *(const MeshSBTData*)optixGetSbtDataPointer();
-
-    // ------------------------------------------------------------------
-    // gather some basic hit information
-    // ------------------------------------------------------------------
-    const int   primID = optixGetPrimitiveIndex();
-    const glm::ivec3 index = sbtData.index[primID];
-    const float u = optixGetTriangleBarycentrics().x;
-    const float v = optixGetTriangleBarycentrics().y;
-
-    // ------------------------------------------------------------------
-    // compute normal, using either shading normal (if avail), or
-    // geometry normal (fallback)
-    // ------------------------------------------------------------------
-    glm::vec3 vertices[3];
-    vertices[0] = sbtData.modelMatrix * glm::vec4(sbtData.vertex[index.x], 1);
-    vertices[1] = sbtData.modelMatrix * glm::vec4(sbtData.vertex[index.y], 1);
-    vertices[2] = sbtData.modelMatrix * glm::vec4(sbtData.vertex[index.z], 1);
-
-
-    const glm::vec3& A = sbtData.vertex[index.x];
-    const glm::vec3& B = sbtData.vertex[index.y];
-    const glm::vec3& C = sbtData.vertex[index.z];
-    glm::vec3 Ng = cross(vertices[1] - vertices[0], vertices[2] - vertices[0]);
-    //glm::vec3 Ng = cross(B - A, C - A);
-    glm::vec3 Ns = (sbtData.normal)
-        ? ((1.f - u - v) * sbtData.normal[index.x]
-            + u * sbtData.normal[index.y]
-            + v * sbtData.normal[index.z])
-        : Ng;
-
-    // ------------------------------------------------------------------
-    // face-forward and normalize normals
-    // ------------------------------------------------------------------
-    const glm::vec3 rayDir = OptixHelpers::Vec3(optixGetWorldRayDirection());
-
-    if (dot(rayDir, Ng) > 0.f) Ng = -Ng;
-    Ng = normalize(Ng);
-
-    if (dot(Ng, Ns) < 0.f)
-        Ns -= 2.f * dot(Ng, Ns) * Ng;
-    Ns = normalize(Ns);
-
-    // ------------------------------------------------------------------
-    // compute diffuse material color, including diffuse texture, if
-    // available
-    // ------------------------------------------------------------------
-    glm::vec3 diffuseColor = sbtData.albedoColor;
-    if (sbtData.hasAlbedoTexture && sbtData.texcoord) {
-        const glm::vec2 tc
-            = (1.f - u - v) * sbtData.texcoord[index.x]
-            + u * sbtData.texcoord[index.y]
-            + v * sbtData.texcoord[index.z];
-
-        glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, tc.x, tc.y));
-        diffuseColor *= glm::vec3(fromTexture.x, fromTexture.y, fromTexture.z);
-    }
-
-    // ------------------------------------------------------------------
-    // compute shadow
-    // ------------------------------------------------------------------
-    const glm::vec3 surfPos
-        = (1.f - u - v) * vertices[0]
-        + u * vertices[1]
-        + v * vertices[2];
-    //const glm::vec3 lightPos(-907.108f, 2205.875f, -400.0267f);
-    const glm::vec3 lightPos(0, 2, 0);
-    const glm::vec3 lightDir = lightPos - surfPos;
-
-    // trace shadow ray:
-    glm::vec3 lightVisibility = glm::vec3(0.f);
-    // the values we store the PRD pointer in:
-    uint32_t u0, u1;
-    packPointer(&lightVisibility, u0, u1);
-    optixTrace(optixLaunchParams.traversable,
-        OptixHelpers::Float3(surfPos + 1e-3f * Ns),
-        OptixHelpers::Float3(glm::normalize(lightDir)),
-        0,      // tmin
-        glm::length(lightDir),  // tmax
-        0.0f,       // rayTime
-        OptixVisibilityMask(255),
-        // For shadow rays: skip any/closest hit shaders and terminate on first
-        // intersection with anything. The miss shader is used to mark if the
-        // light was visible.
-        OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT,
-        SHADOW_RAY_TYPE,            // SBT offset
-        RAY_TYPE_COUNT,               // SBT stride
-        SHADOW_RAY_TYPE,            // missSBTIndex 
-        u0, u1);
-
-    //OPTIX_RAY_FLAG_DISABLE_ANYHIT | OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT
-
-    // ------------------------------------------------------------------
-    // final shading: a bit of ambient, a bit of directional ambient,
-    // and directional component based on shadowing
-    // ------------------------------------------------------------------
-    const float cosDN
-        = 0.1f
-        + .8f * fabsf(dot(rayDir, Ns));
-
-    glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
-    prd = (.1f + (.2f + .8f * lightVisibility) * cosDN) * diffuseColor;
-}
-
 extern "C" __global__ void __anyhit__radiance()
-{ 
+{
     if (AlphaCutout()) {
         optixIgnoreIntersection();
     }
@@ -259,6 +513,9 @@ extern "C" __global__ void __anyhit__shadow()
     }
 }
 
+#pragma endregion
+
+
 //------------------------------------------------------------------------------
 // miss program that gets called for any ray that did not have a
 // valid intersection
@@ -267,46 +524,41 @@ extern "C" __global__ void __anyhit__shadow()
 // need to have _some_ dummy function to set up a valid SBT
 // ------------------------------------------------------------------------------
 
+#pragma region RayMiss
+
 extern "C" __global__ void __miss__radiance()
 {
-    glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
-    // set to constant white as background color
-    prd = glm::vec3(1.f);
+    RadianceRayData* rayData = (RadianceRayData*)getPRD_1<RadianceRayData>();
+
+    //rayData->radiance = glm::vec3(0.0f);
+    rayData->beta = glm::vec3(0);
+    rayData->bounceCounter = 100;
 }
 
 extern "C" __global__ void __miss__shadow()
 {
     // we didn't hit anything, so the light is visible
-    glm::vec3& prd = *(glm::vec3*)getPRD<glm::vec3>();
-    prd = glm::vec3(1.f);
+    float& prd = *(float*)getPRD_1<float>();
+    //prd = glm::vec3(1.f);
+    prd = 1.0f;
 }
+
+#pragma endregion
+
 
 //------------------------------------------------------------------------------
 // ray gen program - the actual rendering happens in here
 //------------------------------------------------------------------------------
-extern "C" __global__ void __raygen__renderFrame()
-{
-    // compute a test pattern based on pixel ID
-    const int ix = optixGetLaunchIndex().x;
-    const int iy = optixGetLaunchIndex().y;
+#pragma region RayGeneration
 
+__device__ void Camera(glm::ivec2 launchIndex, glm::vec3& origin, glm::vec4& ray_dir) {
     const auto& camera = optixLaunchParams.camera;
 
-    // our per-ray data for this example. what we initialize it to
-    // won't matter, since this value will be overwritten by either
-    // the miss or hit program, anyway
-    glm::vec3 pixelColorPRD = glm::vec3(0.f);
-
-    // the values we store the PRD pointer in:
-    uint32_t u0, u1;
-    packPointer(&pixelColorPRD, u0, u1);
-
-    // Calculate Ray from camera view and projection matrix---------------------------------------------------------------------------------------------------------
     // From https://forums.developer.nvidia.com/t/rebuilding-opengl-camera-and-projection-parameters-in-optix/238362
-    
+
     // X and Y in the projection plane through which the ray shall be shot
-    float x_screen = (static_cast<float>(ix) + .5f) / static_cast<float>(optixLaunchParams.frame.size.x);
-    float y_screen = (static_cast<float>(iy) + .5f) / static_cast<float>(optixLaunchParams.frame.size.y);
+    float x_screen = (static_cast<float>(launchIndex.x) + .5f) / static_cast<float>(optixLaunchParams.frame.size.x);
+    float y_screen = (static_cast<float>(launchIndex.y) + .5f) / static_cast<float>(optixLaunchParams.frame.size.y);
 
     // X and Y in normalized device coordinates
     float x_ndc = x_screen * 2.f - 1.f;
@@ -314,32 +566,147 @@ extern "C" __global__ void __raygen__renderFrame()
 
     glm::vec4 homogenious_ndc = glm::vec4(x_ndc, y_ndc, 1.f, 1.f);
 
-    glm::vec4 p_viewspace = optixLaunchParams.camera.inverseProjectionMatrix * homogenious_ndc;
+    glm::vec4 p_viewspace = camera.inverseProjectionMatrix * homogenious_ndc;
 
     // Transform into world space but get rid of disturbing w-factor
-    glm::vec4 p_worldspace = optixLaunchParams.camera.inverseViewMatrix * glm::vec4(p_viewspace.x, p_viewspace.y, p_viewspace.z, 0.f);
+    glm::vec4 p_worldspace = camera.inverseViewMatrix * glm::vec4(p_viewspace.x, p_viewspace.y, p_viewspace.z, 0.f);
 
-    glm::vec4 ray_dir = glm::normalize(p_worldspace);
-    glm::vec3 origin = optixLaunchParams.camera.position;
+    ray_dir = glm::normalize(p_worldspace);
+    origin = camera.position;
+}
 
-    //----------------------------------------------------------------------------------------------------------
+__device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::vec3 direction, int maxBounces) {
+    RadianceRayData raydata{};
+    raydata.radiance = glm::vec3(0.0);
+    raydata.beta = glm::vec3(1.0);
+    raydata.maxBounces = maxBounces;
+    raydata.bounceCounter = 0;
+    raydata.randomSeed = RandomOptix::tea<16>(optixLaunchParams.frame.size.x * launchIndex.y + launchIndex.x, optixLaunchParams.frame.id);
 
-    optixTrace(optixLaunchParams.traversable,
-        OptixHelpers::Float3(origin),
-        OptixHelpers::Float3(ray_dir),
-        0.1f,    // tmin
-        100.0f,  // tmax
-        0.0f,   // rayTime
-        OptixVisibilityMask(255),
-        OPTIX_RAY_FLAG_NONE,//OPTIX_RAY_FLAG_NONE,OPTIX_RAY_FLAG_DISABLE_ANYHIT
-        RADIANCE_RAY_TYPE,            // SBT offset
-        RAY_TYPE_COUNT,               // SBT stride
-        RADIANCE_RAY_TYPE,            // missSBTIndex 
-        u0, u1);
+    raydata.nextOrigin = origin;
+    raydata.nextDirection = direction;
 
-    const int r = int(255.99f * pixelColorPRD.x);
-    const int g = int(255.99f * pixelColorPRD.y);
-    const int b = int(255.99f * pixelColorPRD.z);
+    raydata.isDebugRay = false;
+
+    if (launchIndex == glm::ivec2(525, 250) && optixLaunchParams.frame.id == 10) {
+        raydata.isDebugRay = true;
+    }
+
+    while (raydata.bounceCounter < raydata.maxBounces && glm::length(raydata.beta) > 0.00001) {
+
+        /*if (launchIndex == glm::ivec2(1, 1)) {
+            PrintVector("Beta", raydata.beta);
+        }*/
+
+        TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
+    }
+
+    //TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
+
+    /*if (launchIndex == glm::ivec2(525, 250)) {
+        return glm::vec3(1, 0, 0);
+    }*/
+
+
+    return raydata.radiance;
+    //return glm::vec3(1, 1, 1);
+}
+
+//ACES Approximation from https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+__device__ glm::vec3 TonemapACES(glm::vec3 vector) {
+    const float a = 2.51f;
+    const float b = 0.03f;
+    const float c = 2.43f;
+    const float d = 0.59f;
+    const float e = 0.14f;
+
+    glm::vec3 temp = vector;
+    temp.x = glm::clamp((vector.x * (a * vector.x + b)) / (vector.x * (c * vector.x + d) + e), 0.0f, 1.0f);
+    temp.y = glm::clamp((vector.y * (a * vector.y + b)) / (vector.y * (c * vector.y + d) + e), 0.0f, 1.0f);
+    temp.z = glm::clamp((vector.z * (a * vector.z + b)) / (vector.z * (c * vector.z + d) + e), 0.0f, 1.0f);
+
+    return temp;
+}
+
+
+//From IDKEngine (VoxelConeTracing)
+__device__ glm::vec3 LinearToSrgb(glm::vec3 linearRgb)
+{
+    glm::bvec3 cutoff = glm::lessThan(linearRgb, glm::vec3(0.0031308));
+    glm::vec3 higher = glm::vec3(1.055) * SavePow(linearRgb, glm::vec3(1.0 / 2.4)) - glm::vec3(0.055);
+    glm::vec3 lower = linearRgb * glm::vec3(12.92);
+    glm::vec3 result = SaveMix(higher, lower, cutoff);
+    return result;
+}
+
+//From IDKEngine (VoxelConeTracing)
+__device__ glm::vec3 Dither(glm::vec3 color, glm::ivec2 imgCoord)
+{
+    // Source: https://github.com/turanszkij/WickedEngine/blob/master/WickedEngine/shaders/globals.hlsli#L824
+    const float BayerMatrix8[8][8] =
+    {
+        { 1.0 / 65.0, 49.0 / 65.0, 13.0 / 65.0, 61.0 / 65.0, 4.0 / 65.0, 52.0 / 65.0, 16.0 / 65.0, 64.0 / 65.0 },
+        { 33.0 / 65.0, 17.0 / 65.0, 45.0 / 65.0, 29.0 / 65.0, 36.0 / 65.0, 20.0 / 65.0, 48.0 / 65.0, 32.0 / 65.0 },
+        { 9.0 / 65.0, 57.0 / 65.0, 5.0 / 65.0, 53.0 / 65.0, 12.0 / 65.0, 60.0 / 65.0, 8.0 / 65.0, 56.0 / 65.0 },
+        { 41.0 / 65.0, 25.0 / 65.0, 37.0 / 65.0, 21.0 / 65.0, 44.0 / 65.0, 28.0 / 65.0, 40.0 / 65.0, 24.0 / 65.0 },
+        { 3.0 / 65.0, 51.0 / 65.0, 15.0 / 65.0, 63.0 / 65.0, 2.0 / 65.0, 50.0 / 65.0, 14.0 / 65.0, 62.0 / 65.0 },
+        { 35.0 / 65.0, 19.0 / 65.0, 47.0 / 65.0, 31.0 / 65.0, 34.0 / 65.0, 18.0 / 65.0, 46.0 / 65.0, 30.0 / 65.0 },
+        { 11.0 / 65.0, 59.0 / 65.0, 7.0 / 65.0, 55.0 / 65.0, 10.0 / 65.0, 58.0 / 65.0, 6.0 / 65.0, 54.0 / 65.0 },
+        { 43.0 / 65.0, 27.0 / 65.0, 39.0 / 65.0, 23.0 / 65.0, 42.0 / 65.0, 26.0 / 65.0, 38.0 / 65.0, 22.0 / 65.0 }
+    };
+    glm::uint len = 8 * 8;
+
+    int x = imgCoord.x % 8;
+    int y = imgCoord.y % 8;
+    float ditherVal = (BayerMatrix8[x][y] - 0.5) / len;
+
+    glm::vec3 dithered = color + ditherVal;
+
+    return dithered;
+}
+
+extern "C" __global__ void __raygen__renderFrame()
+{
+    glm::ivec2 launchIndex = glm::ivec2();
+    launchIndex.x = optixGetLaunchIndex().x;
+    launchIndex.y = optixGetLaunchIndex().y;
+
+    //get the ray from the camera
+    glm::vec3 origin = glm::vec3();
+    glm::vec4 ray_dir = glm::vec4();
+    Camera(launchIndex, origin, ray_dir);
+
+    //RadianceRayData raydata{};
+    //raydata.radiance = glm::vec3(0.0);
+    //raydata.beta = glm::vec3(1.0);
+    //raydata.maxBounces = 4;
+    //raydata.bounceCounter = 0;
+    //raydata.randomSeed = RandomOptix::tea<16>(optixLaunchParams.frame.size.x * launchIndex.y + launchIndex.x, optixLaunchParams.frame.id);
+    //
+    ////Trace Rays
+    //TraceRadiance(origin, ray_dir, 0.1f, 100.0f, &raydata);
+
+    glm::vec3 pathRadiance = SamplePath(launchIndex, origin, ray_dir, 3);
+
+    //tonemapping
+    //pathRadiance = TonemapACES(pathRadiance);
+
+    //pathRadiance = agx(pathRadiance);
+    //pathRadiance = agxLook(pathRadiance);
+    //pathRadiance = agxEotf(pathRadiance);
+
+    pathRadiance = AgX_DS(pathRadiance, 0.45, 1.06, 0.18, 1.0, 0.1);//Settings taken from IDKEngine (VoxelConeTracing)
+    pathRadiance = SaveClamp(pathRadiance, 0.0, 1.0);
+    //pathRadiance = LinearToSrgb(pathRadiance);
+    //pathRadiance = Dither(pathRadiance, launchIndex);
+
+    const int r = int(255.99f * pathRadiance.x);
+    const int g = int(255.99f * pathRadiance.y);
+    const int b = int(255.99f * pathRadiance.z);
+
+    /*if (pathRadiance.x < 0 || pathRadiance.y < 0 || pathRadiance.z < 0) {
+        printf("djkhskdnajskdajshkdnjksndjkandkjnjdksnjdkanskjd");
+    }*/
 
     // convert to 32-bit rgba value (we explicitly set alpha to 0xff
     // to make stb_image_write happy ...
@@ -347,6 +714,8 @@ extern "C" __global__ void __raygen__renderFrame()
         | (r << 0) | (g << 8) | (b << 16);
 
     // and write to frame buffer ...
-    const uint32_t fbIndex = ix + iy * optixLaunchParams.frame.size.x;
+    const uint32_t fbIndex = launchIndex.x + launchIndex.y * optixLaunchParams.frame.size.x;
     optixLaunchParams.frame.colorBuffer[fbIndex] = rgba;
 }
+
+#pragma endregion

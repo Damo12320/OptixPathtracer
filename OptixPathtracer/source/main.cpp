@@ -20,6 +20,7 @@ int main()
     camera->SetBlenderPosition(glm::vec3(-0.977644, -0.366231, 1.0745));
     camera->SetBlenderRotation(glm::vec3(89.1897, 20, 77.765));
 
+    //glm::ivec2 viewSize{ 1920, 1080 };
     glm::ivec2 viewSize{ 1920, 1080 };
     OptixView* optixView = new OptixView(viewDef, viewSize, model.get(), std::move(camera));
 

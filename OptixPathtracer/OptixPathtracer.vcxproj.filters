@@ -24,9 +24,6 @@
     <ClCompile Include="source\Renderer\OptixView.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="source\Renderer\OptixViewTexture.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="source\ModelLoading\ModelLoader.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -37,6 +34,18 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="source\Renderer\Camera.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Renderer\OpenGL\ShaderProgramm.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Renderer\OpenGL\Framebuffer.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Renderer\OpenGL\GLTexture2D.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Renderer\OptiX\MinimalAgX.h">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -51,9 +60,6 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="source\Renderer\OptixView.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="source\Renderer\OptixViewTexture.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="source\ModelLoading\ModelLoader.h">
@@ -83,12 +89,36 @@
     <ClInclude Include="source\Renderer\Camera.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="source\Renderer\OpenGL\ShaderProgramm.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OpenGL\GLTexture2D.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OpenGL\Framebuffer.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\random.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\Lights.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\glmCUDA.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\AgxDS.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\Users\damia\Desktop\IDK-Engine\IDKEngine\Resource\Final Scenes Lights\3\untitled.bin">
       <Filter>Ressourcendateien</Filter>
     </None>
     <None Include="source\Renderer\OptiX\devicePrograms.cu.ptx" />
+    <None Include="source\Renderer\OpenGL\Shader\PostProcess.vert" />
+    <None Include="source\Renderer\OpenGL\Shader\AddPathtracedFrame.frag" />
+    <None Include="source\Renderer\OpenGL\Shader\Final.frag" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="source\Renderer\OptiX\devicePrograms.cu" />

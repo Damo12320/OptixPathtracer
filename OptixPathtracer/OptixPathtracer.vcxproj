@@ -24,9 +24,12 @@
     <ClCompile Include="source\ModelLoading\ModelLoader.cpp" />
     <ClCompile Include="source\Renderer\Camera.cpp" />
     <ClCompile Include="source\Renderer\OpenGLWindow.cpp" />
-    <ClCompile Include="source\Renderer\OptixViewTexture.cpp" />
+    <ClCompile Include="source\Renderer\OpenGL\Framebuffer.cpp" />
+    <ClCompile Include="source\Renderer\OpenGL\GLTexture2D.cpp" />
     <ClCompile Include="source\Renderer\OptixView.cpp" />
+    <ClCompile Include="source\Renderer\OptiX\MinimalAgX.h" />
     <ClCompile Include="source\Renderer\OptiX\OptixRenderer.cpp" />
+    <ClCompile Include="source\Renderer\OpenGL\ShaderProgramm.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\3rdParty\OptixSample\CUDABuffer.h" />
@@ -37,15 +40,24 @@
     <ClInclude Include="source\ModelLoading\Texture.h" />
     <ClInclude Include="source\Renderer\Camera.h" />
     <ClInclude Include="source\Renderer\OpenGLWindow.h" />
-    <ClInclude Include="source\Renderer\OptixViewTexture.h" />
+    <ClInclude Include="source\Renderer\OpenGL\Framebuffer.h" />
+    <ClInclude Include="source\Renderer\OpenGL\GLTexture2D.h" />
     <ClInclude Include="source\Renderer\OptixView.h" />
+    <ClInclude Include="source\Renderer\OptiX\AgxDS.h" />
+    <ClInclude Include="source\Renderer\OptiX\glmCUDA.h" />
     <ClInclude Include="source\Renderer\OptiX\LaunchParams.h" />
     <ClInclude Include="source\Renderer\OptiX\MeshSBTData.h" />
     <ClInclude Include="source\Renderer\OptiX\OptixHelpers.h" />
     <ClInclude Include="source\Renderer\OptiX\OptixRenderer.h" />
+    <ClInclude Include="source\Renderer\OpenGL\ShaderProgramm.h" />
+    <ClInclude Include="source\Renderer\OptiX\Lights.h" />
+    <ClInclude Include="source\Renderer\OptiX\random.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\Users\damia\Desktop\IDK-Engine\IDKEngine\Resource\Final Scenes Lights\3\untitled.bin" />
+    <None Include="source\Renderer\OpenGL\Shader\AddPathtracedFrame.frag" />
+    <None Include="source\Renderer\OpenGL\Shader\Final.frag" />
+    <None Include="source\Renderer\OpenGL\Shader\PostProcess.vert" />
     <None Include="source\Renderer\OptiX\devicePrograms.cu.ptx" />
   </ItemGroup>
   <ItemGroup>

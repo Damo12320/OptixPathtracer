@@ -14,6 +14,9 @@ public:
 	std::vector<glm::vec3> normal;
 	std::vector<glm::vec2> texCoord;
 
+	std::vector<glm::vec3> tangents;
+	std::vector<glm::vec3> bitangents;
+
 	std::vector<glm::ivec3> index;
 
 	//Transformation
@@ -36,6 +39,7 @@ public:
 public:
 	glm::mat4x4 GetModelMatrix();
 	void CalculateModelMatrix();
+	void CalculateTangentBasis();
 
 	bool HasAlbedoTex();
 	bool HasNormalTex();

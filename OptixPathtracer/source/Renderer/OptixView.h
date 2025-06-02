@@ -2,7 +2,9 @@
 
 #include"OptiX/OptixRenderer.h"
 #include"OpenGLWindow.h"
-#include"OptixViewTexture.h"
+#include"OpenGL/GLTexture2D.h"
+#include"OpenGL/Framebuffer.h"
+#include"OpenGL/ShaderProgramm.h"
 
 #include <memory>
 
@@ -19,8 +21,16 @@ public:
 	glm::ivec2 viewSize;
 
 	bool isCameraMoving = false;
+
+	bool clearFrameBuffer = false;
 private:
-	std::unique_ptr<OptixViewTexture> viewTexture;
+	std::unique_ptr<Framebuffer> framebuffer;
+	std::unique_ptr<GLTexture2D> newFrame;
+
+	std::unique_ptr<ShaderProgramm> combineShader;
+	std::unique_ptr<ShaderProgramm> finalShader;
+
+	int samples = 0;
 public:
 	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera);
 
@@ -30,7 +40,8 @@ public:
 
 private:
 	void GLFrameSetup();
-	void DrawOptix();
+	void DrawOptix(GLTexture2D* texture);
+	void AddNewFrameToBuffer(GLTexture2D* newFrame, Framebuffer* buffer);
 	void DrawToWindow();
 	void EndFrame();
 };

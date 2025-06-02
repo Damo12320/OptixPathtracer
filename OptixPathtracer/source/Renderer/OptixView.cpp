@@ -22,6 +22,8 @@ static void OnCursorMove(GLFWwindow* window, double x, double y) {
 
 		camera->rotation += rotationDiff;
 		camera->rotation.x = glm::clamp<float>(camera->rotation.x, -80, 80);
+
+		optixView->clearFrameBuffer = true;
 	}
 
 
@@ -76,6 +78,7 @@ static void OnKeyPressed(GLFWwindow* window, int key, int scancode, int action, 
 
 	if (glm::length(movement) != 0) {
 		movement = glm::normalize(movement);
+		optixView->clearFrameBuffer = true;
 	}
 	camera->position += movement;
 }
@@ -85,7 +88,21 @@ static void OnKeyPressed(GLFWwindow* window, int key, int scancode, int action, 
 OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera) {
 	this->window = std::unique_ptr<OpenGLWindow>(new OpenGLWindow(viewSize));
 	this->optixRenderer = std::unique_ptr<OptixRenderer>(new OptixRenderer(viewDef.ptxPath, model));
-	this->viewTexture = std::unique_ptr<OptixViewTexture>(new OptixViewTexture());
+
+	//Texture to store the new Frame
+	this->newFrame = std::unique_ptr<GLTexture2D>(new GLTexture2D(viewSize));
+
+	//FrameBuffer
+	this->framebuffer = std::unique_ptr<Framebuffer>(new Framebuffer());
+	this->framebuffer->AttachNewTexture2D(GL_COLOR_ATTACHMENT0, viewSize);
+
+	if (!this->framebuffer->IsComplete()) {
+		std::cout << "ERROR::OPTIXVIEW::CONSTRUCTOR::FRAMEBUFFER_NOT_COMPLETE" << std::endl;
+	}
+
+	//Shader
+	this->combineShader = std::unique_ptr<ShaderProgramm>(new ShaderProgramm("source/Renderer/OpenGL/Shader/PostProcess.vert", "source/Renderer/OpenGL/Shader/AddPathtracedFrame.frag"));
+	this->finalShader = std::unique_ptr<ShaderProgramm>(new ShaderProgramm("source/Renderer/OpenGL/Shader/PostProcess.vert", "source/Renderer/OpenGL/Shader/Final.frag"));
 
 	this->camera = std::move(camera);
 
@@ -111,16 +128,42 @@ void OptixView::Run() {
 
 	//Render Loop
 	while (!glfwWindowShouldClose(this->window->window)) {
-		//camera->rotation = camera->rotation + glm::vec3(0, 0.3, 0);
-
 		this->optixRenderer->SetCamera(this->camera.get());
 
 		//Optix
-		this->DrawOptix();
+		this->DrawOptix(this->newFrame.get());
+
+		if (this->clearFrameBuffer) {
+			this->clearFrameBuffer = false;
+
+			this->framebuffer->Bind();
+			glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			this->samples = 0;
+		}
 
 		//OpenGL
-		this->GLFrameSetup();
-		this->DrawToWindow();
+		glDisable(GL_DEPTH_TEST);
+		glViewport(0, 0, this->viewSize.x, this->viewSize.y);
+
+		this->AddNewFrameToBuffer(this->newFrame.get(), this->framebuffer.get());
+
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		this->finalShader->Bind();
+		this->finalShader->SetTextureLocation("image", 0);
+		this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0)->BindToUnit(0);
+		//this->newFrame->BindToUnit(0);
+
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+		//OpenGL
+		//this->GLFrameSetup();
+		//this->DrawToWindow();
 		this->EndFrame();
 	}
 }
@@ -139,6 +182,51 @@ void OptixView::Resize(glm::ivec2 viewSize) {
 
 #pragma region Private
 
+void OptixView::DrawOptix(GLTexture2D* texture) {
+	//Pixel Storage
+	std::vector<uint32_t> pixels;
+	pixels.resize(this->viewSize.x * this->viewSize.y);
+
+	//Render Optix
+	this->optixRenderer->Render(pixels.data());
+
+	texture->SetData(pixels.data(), this->viewSize);
+}
+
+void OptixView::AddNewFrameToBuffer(GLTexture2D* newFrame, Framebuffer* buffer) {
+	//Are they the same size?
+	if (newFrame->GetWidth() != buffer->GetSize().x || newFrame->GetHeight() != buffer->GetSize().y) {
+		std::cout << "ERROR::OPTIXVIEW::AddNewFrameToBuffer  the buffer and the Texture have differnt sizes!" << std::endl;
+		std::cout << "Texture Width: " << newFrame->GetWidth() << " + Height: " << newFrame->GetHeight() << std::endl;
+		std::cout << "Buffer Width: " << buffer->GetSize().x << " + Height: " << buffer->GetSize().y << std::endl;
+		return;
+	}
+
+	//Bind shader
+	this->combineShader->Bind();
+
+	//Set Textures
+	this->combineShader->SetTextureLocation("frameBufferImage", 1);
+	buffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0)->BindToUnit(1);
+
+	this->combineShader->SetTextureLocation("imageToAdd", 2);
+	newFrame->BindToUnit(2);
+
+	//Set Weight
+	this->samples++;
+	float frameWeight = 1.0 / this->samples;
+	this->combineShader->SetFloat("weight", frameWeight);
+
+	//Bind buffer
+	buffer->Bind();
+
+	//Draw
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	//Unbind Framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void OptixView::GLFrameSetup() {
 	//was in sample, but doesn't change anything
 	//glDisable(GL_LIGHTING);
@@ -155,15 +243,6 @@ void OptixView::GLFrameSetup() {
 	glDisable(GL_DEPTH_TEST);
 }
 
-void OptixView::DrawOptix() {
-	std::vector<uint32_t> pixels;
-	pixels.resize(this->viewSize.x * this->viewSize.y);
-
-	//Render Optix and retrieve pixels
-	this->optixRenderer->Render(pixels.data());
-	this->viewTexture->SetData(pixels.data(), this->viewSize);
-}
-
 void OptixView::DrawToWindow() {
 
 	//Set viweport size
@@ -173,7 +252,8 @@ void OptixView::DrawToWindow() {
 	glLoadIdentity();
 	glOrtho(0.f, (float)this->viewSize.x, 0.f, (float)this->viewSize.y, -1.f, 1.f);
 
-	this->viewTexture->BindTexture();
+	this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0)->Bind();
+	//this->newFrame->Bind();
 
 	glBegin(GL_QUADS);
 	{

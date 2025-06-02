@@ -155,6 +155,8 @@ void ModelLoader::ParseNodes(Model* finalModel, tinygltf::Model& model, tinygltf
 		ParseMaterial(finalMesh.get(), model, primitive);
 		ParseTransformation(finalMesh.get(), node);
 
+		finalMesh->CalculateTangentBasis();
+
 		finalMesh->meshName = node.name;
 
 		finalModel->meshes.push_back(std::move(finalMesh));

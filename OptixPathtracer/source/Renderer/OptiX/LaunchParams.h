@@ -10,6 +10,7 @@ struct LaunchParams
     struct {
         uint32_t* colorBuffer;
         glm::ivec2     size;
+        unsigned int id = 0;
     } frame;
 
     struct {

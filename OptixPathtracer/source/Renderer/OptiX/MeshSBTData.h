@@ -11,6 +11,9 @@ struct MeshSBTData {
     glm::vec2* texcoord;
     glm::ivec3* index;
 
+    glm::vec3* tangents;
+    glm::vec3* bitangents;
+
     glm::mat4x4 modelMatrix;
 
     float roughness;

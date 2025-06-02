@@ -100,7 +100,7 @@ void OptixRenderer::CreateModule(const std::string& ptxPath) {
     pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
     pipelineCompileOptions.pipelineLaunchParamsVariableName = "optixLaunchParams";
 
-    pipelineLinkOptions.maxTraceDepth = 2;
+    pipelineLinkOptions.maxTraceDepth = 5;
 
 
     //read ptx file
@@ -288,12 +288,12 @@ void OptixRenderer::CreatePipeline() {
         pipeline,
         /* [in] The direct stack size requirement for direct
            callables invoked from IS or AH. */
-        2 * 1024,
+        4 * 1024,
         /* [in] The direct stack size requirement for direct
            callables invoked from RG, MS, or CH.  */
-        2 * 1024,
+        4 * 1024,
         /* [in] The continuation stack requirement. */
-        2 * 1024,
+        4 * 1024,
         /* [in] The maximum depth of a traversable graph
            passed to trace. */
         1));
@@ -310,6 +310,9 @@ OptixTraversableHandle OptixRenderer::BuildAccel()
     normalBuffer.resize(numMeshes);
     texcoordBuffer.resize(numMeshes);
     indexBuffer.resize(numMeshes);
+
+    tangentsBuffer.resize(numMeshes);
+    bitangentsBuffer.resize(numMeshes);
     matrices.resize(numMeshes);
 
     OptixTraversableHandle asHandle{ 0 };
@@ -332,6 +335,8 @@ OptixTraversableHandle OptixRenderer::BuildAccel()
         if (!mesh.texCoord.empty())
             texcoordBuffer[meshID].alloc_and_upload(mesh.texCoord);
 
+        tangentsBuffer[meshID].alloc_and_upload(mesh.tangents);
+        bitangentsBuffer[meshID].alloc_and_upload(mesh.bitangents);
         matrices[meshID].alloc_and_upload(mesh.ModelMatrix);
 
         triangleInput[meshID] = {};
@@ -541,6 +546,9 @@ void OptixRenderer::BuildSBT() {
             rec.data.vertex = (glm::vec3*)vertexBuffer[meshID].d_pointer();
             rec.data.normal = (glm::vec3*)normalBuffer[meshID].d_pointer();
             rec.data.texcoord = (glm::vec2*)texcoordBuffer[meshID].d_pointer();
+
+            rec.data.tangents = (glm::vec3*)tangentsBuffer[meshID].d_pointer();
+            rec.data.bitangents = (glm::vec3*)bitangentsBuffer[meshID].d_pointer();
             rec.data.modelMatrix = mesh->GetModelMatrix();
             hitgroupRecords.push_back(rec);
         }
@@ -611,6 +619,8 @@ void OptixRenderer::Render(uint32_t h_pixels[])
     // sanity check: make sure we launch only after first resize is
     // already done:
     if (launchParams.frame.size.x == 0) return;
+
+    launchParams.frame.id++;
 
     launchParamsBuffer.upload(&launchParams, 1);
 
