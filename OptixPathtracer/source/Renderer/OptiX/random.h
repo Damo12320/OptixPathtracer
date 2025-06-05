@@ -1,3 +1,4 @@
+#pragma once
 /* 
  * Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
  *
@@ -26,7 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <cuda_runtime.h>
+#include "glmCUDA.h"
 
 namespace RandomOptix {
     template<unsigned int N>
@@ -70,5 +71,15 @@ namespace RandomOptix {
     static __host__ __device__ __inline__ unsigned int rot_seed(unsigned int seed, unsigned int frame)
     {
         return seed ^ frame;
+    }
+
+    static __device__ glm::vec2 SampleUniformDiskPolar(unsigned int& prev) {
+        const float pi = 3.14159265359;
+
+        glm::vec2 u = glm::vec2(rnd(prev), rnd(prev));
+
+        float r = std::sqrt(u.x);
+        float theta = 2 * pi * u.y;
+        return { r * std::cos(theta), r * std::sin(theta) };
     }
 }

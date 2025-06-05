@@ -110,6 +110,27 @@
     <ClInclude Include="source\Renderer\OptiX\AgxDS.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\BRDF\ConductorBRDF.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\Surface.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\BRDF\DielectricBRDF.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\BRDF\Microfacet.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\Microfacet.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\SphericalGeometry.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\Conductor.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\Users\damia\Desktop\IDK-Engine\IDKEngine\Resource\Final Scenes Lights\3\untitled.bin">

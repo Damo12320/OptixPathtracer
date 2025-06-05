@@ -23,11 +23,15 @@
 #include "LaunchParams.h"
 #include "MeshSBTData.h"
 #include "OptixHelpers.h"
-#include "random.h"
 
 #include "Lights.h"
 #include "MinimalAgX.h"
 #include "AgxDS.h"
+
+//#include "BRDF/ConductorBRDF.h"
+//#include "BRDF/DielectricBRDF.h"
+
+#include "PBRT/Conductor.h"
 
 
 
@@ -50,20 +54,6 @@ struct RadianceRayData {
     unsigned int randomSeed;
 
     bool isDebugRay;
-};
-
-struct Surface {
-    glm::vec3 gNormal, sNormal;
-    glm::ivec3 index;
-    glm::vec3 vertices[3];
-    glm::vec3 position;
-    glm::vec2 texCoord;
-
-    glm::vec3 incommingRay;
-
-    float metallic, roughness;
-
-    glm::vec3 albedo;
 };
 
 #pragma region PtrPacking
@@ -176,11 +166,14 @@ __device__ void GetNormal(MeshSBTData& sbtData, Surface& surface) {
 
     glm::vec3 Ng = cross(surface.vertices[1] - surface.vertices[0], surface.vertices[2] - surface.vertices[0]);
     //glm::vec3 Ng = cross(B - A, C - A);
-    glm::vec3 Ns = (sbtData.normal)
-        ? ((1.f - u - v) * sbtData.normal[surface.index.x]
-            + u * sbtData.normal[surface.index.y]
-            + v * sbtData.normal[surface.index.z])
-        : Ng;
+
+    glm::vec3 Ns = glm::vec3(0);
+    if (sbtData.normal) {
+        Ns = (1.f - u - v) * sbtData.normal[surface.index.x]
+                + u * sbtData.normal[surface.index.y]
+                + v * sbtData.normal[surface.index.z];
+        Ns = glm::normalize(sbtData.modelMatrix * glm::vec4(Ns, 0.0));
+    }
 
     // ------------------------------------------------------------------
     // face-forward and normalize normals
@@ -192,13 +185,9 @@ __device__ void GetNormal(MeshSBTData& sbtData, Surface& surface) {
     if (dot(Ng, Ns) < 0.f)
         Ns -= 2.f * dot(Ng, Ns) * Ng;
     Ns = normalize(Ns);
-    
-    //surface.gNormal = glm::normalize( glm::transpose(glm::inverse(sbtData.modelMatrix)) * glm::vec4(Ng, 0.0) );
-    //surface.sNormal = glm::normalize( glm::transpose(glm::inverse(sbtData.modelMatrix)) * glm::vec4(Ns, 0.0) );
 
-
-    surface.gNormal = glm::normalize( sbtData.modelMatrix * glm::vec4(Ng, 0.0));
-    surface.sNormal = glm::normalize( sbtData.modelMatrix * glm::vec4(Ns, 0.0));
+    surface.gNormal = Ng;
+    surface.sNormal = Ns;
 }
 
 __device__ glm::vec3 GetSurfacePos(glm::vec3* vertices) {
@@ -249,35 +238,79 @@ __device__ void SampleTextures(MeshSBTData& sbtData, glm::vec3& texNormal, Surfa
     }
 }
 
-__device__ void NormalMapping(MeshSBTData& sbtData, Surface& surface, glm::vec3 normalTex) {
-    if (!sbtData.normal || normalTex == glm::vec3(0)) {
-        return;
+__device__ void BuildTangentSpace(glm::vec3 normal, glm::vec3& tangent, glm::vec3& bitangent) {
+    glm::vec3 c1 = glm::cross(normal, glm::vec3(0.0, 0.0, 1.0));
+    glm::vec3 c2 = glm::cross(normal, glm::vec3(0.0, 1.0, 0.0));
+
+    if (glm::length(c1) > glm::length(c2))
+    {
+        tangent = c1;
+    }
+    else
+    {
+        tangent = c2;
     }
 
-    //worldspace TBN
+    tangent = glm::normalize(tangent);
+
+    bitangent = cross(tangent, normal);
+}
+
+__device__ glm::mat3 GetTBN(MeshSBTData& sbtData, Surface& surface) {
     const float u = optixGetTriangleBarycentrics().x;
     const float v = optixGetTriangleBarycentrics().y;
 
-
-    glm::vec3 tangent = 
-        (1.f - u - v)   * sbtData.tangents[surface.index.x]
-        + u             * sbtData.tangents[surface.index.y]
-        + v             * sbtData.tangents[surface.index.z];
+    glm::vec3 tangent =
+        (1.f - u - v) * sbtData.tangents[surface.index.x]
+        + u * sbtData.tangents[surface.index.y]
+        + v * sbtData.tangents[surface.index.z];
 
     glm::vec3 bitangent =
-        (1.f - u - v)   * sbtData.bitangents[surface.index.x]
-        + u             * sbtData.bitangents[surface.index.y]
-        + v             * sbtData.bitangents[surface.index.z];
+        (1.f - u - v) * sbtData.bitangents[surface.index.x]
+        + u * sbtData.bitangents[surface.index.y]
+        + v * sbtData.bitangents[surface.index.z];
 
 
     glm::vec3 T = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(tangent, 0.0)));
     glm::vec3 B = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(bitangent, 0.0)));
     glm::vec3 N = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(surface.sNormal, 0.0)));
-    glm::mat3 fragTBN = glm::mat3(T, B, N);
-
-    glm::vec3 normal = normalTex * glm::vec3(2.0) - glm::vec3(1.0);
-    surface.sNormal = glm::normalize(fragTBN * normal);
+    return glm::mat3(T, B, N);
 }
+
+//__device__ void NormalMapping(MeshSBTData& sbtData, Surface& surface, glm::vec3 normalTex) {
+//    if (normalTex == glm::vec3(0)) {
+//        BuildTangentSpace(surface.sNormal, surface.stangent, surface.sbitangent);
+//        return;
+//    }
+//
+//    //worldspace TBN
+//    const float u = optixGetTriangleBarycentrics().x;
+//    const float v = optixGetTriangleBarycentrics().y;
+//
+//
+//    glm::vec3 tangent = 
+//        (1.f - u - v)   * sbtData.tangents[surface.index.x]
+//        + u             * sbtData.tangents[surface.index.y]
+//        + v             * sbtData.tangents[surface.index.z];
+//
+//    glm::vec3 bitangent =
+//        (1.f - u - v)   * sbtData.bitangents[surface.index.x]
+//        + u             * sbtData.bitangents[surface.index.y]
+//        + v             * sbtData.bitangents[surface.index.z];
+//
+//
+//    glm::vec3 T = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(tangent, 0.0)));
+//    glm::vec3 B = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(bitangent, 0.0)));
+//    glm::vec3 N = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(surface.sNormal, 0.0)));
+//    glm::mat3 fragTBN = glm::mat3(T, B, N);
+//
+//
+//    Print("Normal", glm::transpose(fragTBN) * surface.sNormal);
+//
+//    glm::vec3 normal = normalTex * glm::vec3(2.0) - glm::vec3(1.0);
+//    surface.sNormal = glm::normalize(fragTBN * normal);
+//    BuildTangentSpace(surface.sNormal, surface.stangent, surface.sbitangent);
+//}
 
 #pragma region RayTracingMethods
 
@@ -368,13 +401,35 @@ __device__ glm::vec3 RandomHemisphereDirection(unsigned int& seed, const glm::ve
 
 #pragma endregion
 
-__device__ glm::vec3 GetNewRayDirection(unsigned int& seed, glm::vec3 normal) {
-    return RandomHemisphereDirection(seed, normal);
+__device__ bool GetNewRayDirection(unsigned int& seed, Surface& surface, glm::vec3& newDirection, float& pdf, glm::vec3& sample) {
+    const float pdfRandomHemisphere = 1 / (2 * 3.141592654f);//https://ameye.dev/notes/sampling-the-hemisphere/
+
+    float random = RandomOptix::rnd(seed);
+
+    if (random < surface.metallic) {
+
+        return PBRT::Conductor::Sample_f(seed, surface, newDirection, pdf, sample);
+    }
+    else {
+        pdf = pdfRandomHemisphere;
+        sample = surface.albedo / 3.14159265359f;
+        newDirection = RandomHemisphereDirection(seed, surface.sNormal);
+    }
+
+    return true;
 }
 
 __device__ glm::vec3 BRDF(Surface& surface, const glm::vec3 outgoingRay) {
+
+    //glm::vec3 dielectric = DielectricBRDF::DielectricBRDF(surface, outgoingRay);
+    //glm::vec3 conductor = ConductorBRDF::ConductorBRDF(surface, outgoingRay);
+
+    //return SaveMix(dielectric, conductor, surface.metallic);
+
+    glm::vec3 conductor = PBRT::Conductor::f(surface, outgoingRay);
+
     //Diffuse
-    return surface.albedo / 3.14159265359f;
+    return mix(surface.albedo / 3.14159265359f, conductor, surface.metallic);
 }
 
 extern "C" __global__ void __closesthit__radiance()
@@ -404,6 +459,14 @@ extern "C" __global__ void __closesthit__radiance()
     RadianceRayData* rayData = (RadianceRayData*)getPRD_1<RadianceRayData>();
 
 
+    //Transform everything to local Shading Coordinate System
+    surface.ShadingToWorld = GetTBN(sbtData, surface);
+    surface.WorldToShading = glm::transpose(surface.ShadingToWorld);
+
+    surface.sNormal = surface.WorldToShading * surface.sNormal;
+    //surface.gNormal = surface.WorldToShading * surface.gNormal;
+    surface.incommingRay = surface.WorldToShading * surface.incommingRay;
+
     // ------------------------------------------------------------------
     // Get Texture parameters
     // ------------------------------------------------------------------
@@ -413,13 +476,17 @@ extern "C" __global__ void __closesthit__radiance()
     surface.roughness = sbtData.roughness;
     SampleTextures(sbtData, normalTex, surface);
 
-    NormalMapping(sbtData, surface, normalTex);
+    /*if (surface.IsEffectifvelySmooth()) {
+        surface.roughness = 0.05f;
+    }*/
+
+    //NormalMapping(sbtData, surface, normalTex);
 
     //------------------------------------------------------------------------------------------
 
     //Return if maximum depth is reached
     rayData->bounceCounter++;
-    if (rayData->bounceCounter >= rayData->maxBounces) {
+    if (rayData->bounceCounter > rayData->maxBounces) {
         return;
     }
 
@@ -430,9 +497,10 @@ extern "C" __global__ void __closesthit__radiance()
 
     glm::vec3 lightDirection;
     const float lightVisibility = LightVisibility(pointLight.position, surface.position, surface.gNormal, lightDirection);
+    lightDirection = surface.WorldToShading * lightDirection;
 
     if (lightVisibility > 0) {
-        glm::vec3 spectrum = (BRDF(surface, lightDirection)) * fabsf(glm::dot(lightDirection, surface.sNormal));
+        glm::vec3 spectrum = (BRDF(surface, lightDirection)) * AbsDot(lightDirection, surface.sNormal);
 
         rayData->radiance += ( rayData->beta * spectrum * pointLight.GetSample(surface.position) ) / (1 * pointLight.GetPDF());// ( sampleWeight * surface * light ) / light propability * PDF
 
@@ -443,13 +511,14 @@ extern "C" __global__ void __closesthit__radiance()
 
 
     //Sample outgoing direction
-    glm::vec3 newRayDirection = GetNewRayDirection(rayData->randomSeed, surface.sNormal);
+    //float pdf = 0.0f;
+    //glm::vec3 newRayDirection = GetNewRayDirection(rayData->randomSeed, surface, pdf);
 
-    const float pdfRandomHemisphere = 1 / (2 * 3.141592654f);//https://ameye.dev/notes/sampling-the-hemisphere/
+    //newRayDirection = glm::reflect(surface.incommingRay, surface.sNormal);
 
-    float cosTheta = fabsf(glm::dot(newRayDirection, surface.sNormal));
+    //float cosTheta = fabsf(glm::dot(newRayDirection, surface.sNormal));
 
-    rayData->beta *= ( BRDF(surface, newRayDirection) * cosTheta ) / pdfRandomHemisphere;
+    //rayData->beta *= ( BRDF(surface, newRayDirection) * cosTheta ) / pdf;
 
     if (rayData->isDebugRay) {
         //Print("Radiance", rayData->radiance, rayData->bounceCounter);
@@ -458,13 +527,20 @@ extern "C" __global__ void __closesthit__radiance()
         //Print("Light visibility", lightVisibility, rayData->bounceCounter);
     }
 
-    //glm::vec3 newRayOrigin = surface.position + 1e-3f * surface.sNormal;
-    //TraceRadiance(newRayOrigin, newRayDirection, 0.0f, 100.0f, rayData);
+    float pdf;
+    glm::vec3 newDirection;
+    glm::vec3 sample;
+    if (!GetNewRayDirection(rayData->randomSeed, surface, newDirection, pdf, sample)) {
+        rayData->beta = glm::vec3(0);
+        return;
+    }
 
-    rayData->nextOrigin = surface.position + 1e-3f * surface.gNormal;
-    rayData->nextDirection = newRayDirection;
+    rayData->beta *= sample * AbsDot(newDirection, surface.sNormal) / pdf;
 
-    //rayData->radiance = surface.sNormal;
+    rayData->nextOrigin = surface.position + 1e-3f * (surface.gNormal);
+    rayData->nextDirection = surface.ShadingToWorld * newDirection;
+
+    //rayData->radiance = (surface.ShadingToWorld * surface.sNormal + 1.0f) / 2.0f;
 }
 
 #pragma region RayAnyhit
@@ -588,7 +664,9 @@ __device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::v
 
     raydata.isDebugRay = false;
 
-    if (launchIndex == glm::ivec2(525, 250) && optixLaunchParams.frame.id == 10) {
+    glm::ivec2 debugPixel = glm::ivec2(850, 350);
+
+    if (launchIndex == debugPixel && optixLaunchParams.frame.id == 10) {
         raydata.isDebugRay = true;
     }
 
@@ -603,9 +681,9 @@ __device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::v
 
     //TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
 
-    /*if (launchIndex == glm::ivec2(525, 250)) {
+    if (launchIndex.x == debugPixel.x || launchIndex.y == debugPixel.y) {
         return glm::vec3(1, 0, 0);
-    }*/
+    }
 
 
     return raydata.radiance;
@@ -691,12 +769,11 @@ extern "C" __global__ void __raygen__renderFrame()
     //tonemapping
     //pathRadiance = TonemapACES(pathRadiance);
 
-    //pathRadiance = agx(pathRadiance);
-    //pathRadiance = agxLook(pathRadiance);
-    //pathRadiance = agxEotf(pathRadiance);
 
     pathRadiance = AgX_DS(pathRadiance, 0.45, 1.06, 0.18, 1.0, 0.1);//Settings taken from IDKEngine (VoxelConeTracing)
     pathRadiance = SaveClamp(pathRadiance, 0.0, 1.0);
+
+
     //pathRadiance = LinearToSrgb(pathRadiance);
     //pathRadiance = Dither(pathRadiance, launchIndex);
 

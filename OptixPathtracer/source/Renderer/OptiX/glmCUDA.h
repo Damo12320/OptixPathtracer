@@ -30,6 +30,15 @@ __device__ glm::vec3 SavePow(glm::vec3 value, glm::vec3 pow) {
     return temp;
 }
 
+__device__ glm::vec3 SavePow(glm::vec3 value, float pow) {
+    glm::vec3 temp = value;
+    temp.x = powf(value.x, pow);
+    temp.y = powf(value.y, pow);
+    temp.z = powf(value.z, pow);
+
+    return temp;
+}
+
 __device__ glm::vec3 SaveMix(glm::vec3 value1, glm::vec3 value2, glm::vec3 mixValue) {
     glm::vec3 temp = value1;
     temp.x = value1.x * (1 - mixValue.x) + value2.x * mixValue.x;
@@ -63,4 +72,16 @@ __device__ glm::vec3 SaveMax(glm::vec3 value1, float value2) {
     temp.z = value1.z > value2 ? value1.z : value2;
 
     return temp;
+}
+
+__device__ float Sqr(float value) {
+    return value * value;
+}
+
+__device__ glm::vec3 Sqr(glm::vec3 value) {
+    return value * value;
+}
+
+__device__ float AbsDot(glm::vec3 value1, glm::vec3 value2) {
+    return fabsf(glm::dot(value1, value2));
 }
