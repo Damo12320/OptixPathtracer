@@ -1,7 +1,8 @@
 #pragma once
 
-#include"Microfacet.h"
-#include"../Surface.h"
+#include "Microfacet.h"
+#include "../Surface.h"
+#include "../RayData.h"
 
 namespace PBRT {
     namespace Conductor {
@@ -38,59 +39,98 @@ namespace PBRT {
 
 #pragma endregion
 
-        __device__ glm::vec3 f(Surface& surface, glm::vec3 wo) {
-			if (wo.z == 0 || surface.incommingRay.z == 0) return glm::vec3(0);
-            if (!SpherGeom::SameHemisphere(wo, surface.incommingRay)) return glm::vec3(0);
+        __device__ glm::vec3 f(Surface& surface, glm::vec3 wi) {
+			if (wi.z == 0 || surface.outgoingRay.z == 0) return glm::vec3(0);
+            if (!SpherGeom::SameHemisphere(wi, surface.outgoingRay)) return glm::vec3(0);
             if (surface.IsEffectifvelySmooth()) return glm::vec3(0);
 
-            float cosTheta_o = SpherGeom::AbsCosTheta(surface.incommingRay), cosTheta_i = SpherGeom::AbsCosTheta(wo);
+            float cosTheta_o = SpherGeom::AbsCosTheta(surface.outgoingRay), cosTheta_i = SpherGeom::AbsCosTheta(wi);
             if (cosTheta_i == 0 || cosTheta_o == 0) return {};
-            glm::vec3 wm = surface.incommingRay + wo;
+            glm::vec3 wm = surface.outgoingRay + wi;
             if (Sqr(glm::length(wm)) == 0) return {};
             wm = glm::normalize(wm);
 
             //Fresnel
             //glm::vec3 F = FrComplex(AbsDot(wo, wm), eta, k);
 			const glm::vec3 specularColor = glm::vec3(1);//white -> physically correct/ no influence
-			glm::vec3 F = Fresnel82(specularColor, surface.albedo, AbsDot(wo, wm));
+			glm::vec3 F = Fresnel82(specularColor, surface.albedo, AbsDot(surface.outgoingRay, wm));
 
             float alpha = Sqr(surface.roughness);
 
-            return Microfacet::D_Isotropic(wm, alpha) * F * Microfacet::G_Isotropic(surface.incommingRay, wo, alpha) /
+            return Microfacet::D_Isotropic(wm, alpha) * F * Microfacet::G_Isotropic(surface.outgoingRay, wi, alpha) /
                 (4 * cosTheta_i * cosTheta_o);
         }
 
-		__device__ bool Sample_f(unsigned int& randomSeed, Surface& surface, glm::vec3& wo, float& pdf, glm::vec3& sample) {
+		__device__ bool Sample_f(unsigned int& randomSeed, Surface& surface, glm::vec3& wi, float& pdf, glm::vec3& sample) {
             const glm::vec3 specularColor = glm::vec3(1);//white -> physically correct/ no influence
             
             //if (!(sampleFlags & BxDFReflTransFlags::Reflection)) return {};
             if (surface.IsEffectifvelySmooth()) {
-                glm::vec3 wi(-surface.incommingRay.x, -surface.incommingRay.y, surface.incommingRay.z);
+                wi = glm::vec3(-surface.outgoingRay.x, -surface.outgoingRay.y, surface.outgoingRay.z);
+                //glm::vec3 wi(surface.outgoingRay.x, surface.outgoingRay.y, -surface.outgoingRay.z);
 
                 sample = Fresnel82(specularColor, surface.albedo, SpherGeom::AbsCosTheta(wi)) / SpherGeom::AbsCosTheta(wi);
                 //SampledSpectrum f = FrComplex(AbsCosTheta(wi), eta, k) / AbsCosTheta(wi);
-                wo = wi;
-                pdf = 1;
+                pdf = 1.0f;
                 return true;
                 //return BSDFSample(f, wi, 1, BxDFFlags::SpecularReflection);
             }
 
             float alpha = Sqr(surface.roughness);
+            //float alpha = surface.roughness;
 
-            glm::vec3 wm = Microfacet::Sample_wm(randomSeed, surface.incommingRay, alpha);
-            glm::vec3 wi = glm::reflect(surface.incommingRay, wm);
-            if (!SpherGeom::SameHemisphere(surface.incommingRay, wi)) return false;
+            glm::vec3 wm = Microfacet::Sample_wm(randomSeed, surface.outgoingRay, alpha);
+            /*if (glm::dot(wm, surface.outgoingRay) < 0.0f) {
+                wm = -wm;
+            }*/
+
+            wi = glm::reflect(-surface.outgoingRay, wm);
+            //wi = -surface.outgoingRay + 2 * glm::dot(surface.outgoingRay, wm) * wm;
+
+            //wi = glm::normalize(wi);
+
+            if (IsDebugRay() && glm::dot(wm, surface.sNormal) < 0.0f) {
+                printf("wm not in same hemisphere as sNormal \n");
+            }
+
+            if (IsDebugRay() && glm::dot(wi, surface.sNormal) < 0.0f) {
+                printf("wi not in same hemisphere as sNormal \n");
+            }
+
+            if (IsDebugRay() && glm::dot(wi, wm) < 0.0f) {
+                printf("wi not in same hemisphere as wm \n");
+            }
+
+            if (IsDebugRay() && glm::dot(wi, surface.outgoingRay) < 0.0f) {
+                printf("wi not in same hemisphere as outgoingRay \n");
+            }
+
+            if (IsDebugRay()) {
+                Print("sNormal", surface.sNormal);
+                Print("outgoingRay", surface.outgoingRay);
+                Print("wm", wm);
+                Print("wi", wi);
+            }
+
+            /*if (glm::dot(wm, wi) < 0.0f) {
+                wi = -wi;
+            }*/
+
+            if (!SpherGeom::SameHemisphere(surface.outgoingRay, wi)) {
+                return false;
+            }
 
             //<< Compute PDF of wi for microfacet reflection >>
-            pdf = Microfacet::PDF_Isotropic(surface.incommingRay, wm, alpha) / (4 * AbsDot(surface.incommingRay, wm));
+            pdf = Microfacet::PDF_Isotropic(surface.outgoingRay, wm, alpha) / (4 * AbsDot(surface.outgoingRay, wm));
 
-            float cosTheta_o = SpherGeom::AbsCosTheta(surface.incommingRay), cosTheta_i = SpherGeom::AbsCosTheta(wi);
+            float cosTheta_o = SpherGeom::AbsCosTheta(surface.outgoingRay);
+            float cosTheta_i = SpherGeom::AbsCosTheta(wi);
 
             //Fresnel
             //SampledSpectrum F = FrComplex(AbsDot(wo, wm), eta, k);
-            glm::vec3 F = Fresnel82(specularColor, surface.albedo, AbsDot(surface.incommingRay, wm));
+            glm::vec3 F = Fresnel82(specularColor, surface.albedo, AbsDot(surface.outgoingRay, wm));
 
-            glm::vec3 f = Microfacet::D_Isotropic(wm, alpha) * F * Microfacet::G_Isotropic(surface.incommingRay, wi, alpha) / (4 * cosTheta_i * cosTheta_o);
+            glm::vec3 f = Microfacet::D_Isotropic(wm, alpha) * F * Microfacet::G_Isotropic(surface.outgoingRay, wi, alpha) / (4 * cosTheta_i * cosTheta_o);
             //return BSDFSample(f, wi, pdf, BxDFFlags::GlossyReflection);
 
             sample = f;

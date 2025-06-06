@@ -44,9 +44,6 @@
     <ClInclude Include="source\Renderer\OpenGL\GLTexture2D.h" />
     <ClInclude Include="source\Renderer\OptixView.h" />
     <ClInclude Include="source\Renderer\OptiX\AgxDS.h" />
-    <ClInclude Include="source\Renderer\OptiX\BRDF\ConductorBRDF.h" />
-    <ClInclude Include="source\Renderer\OptiX\BRDF\DielectricBRDF.h" />
-    <ClInclude Include="source\Renderer\OptiX\BRDF\Microfacet.h" />
     <ClInclude Include="source\Renderer\OptiX\glmCUDA.h" />
     <ClInclude Include="source\Renderer\OptiX\LaunchParams.h" />
     <ClInclude Include="source\Renderer\OptiX\MeshSBTData.h" />
@@ -58,6 +55,7 @@
     <ClInclude Include="source\Renderer\OptiX\PBRT\Microfacet.h" />
     <ClInclude Include="source\Renderer\OptiX\PBRT\SphericalGeometry.h" />
     <ClInclude Include="source\Renderer\OptiX\random.h" />
+    <ClInclude Include="source\Renderer\OptiX\RayData.h" />
     <ClInclude Include="source\Renderer\OptiX\Surface.h" />
   </ItemGroup>
   <ItemGroup>

@@ -17,15 +17,15 @@ namespace PBRT {
 
         __device__ float CosPhi(glm::vec3 w) {
             float sinTheta = SinTheta(w);
-            return (sinTheta == 0) ? 1 : glm::clamp(w.x / sinTheta, -1.0f, 1.0f);
+            return (sinTheta == 0.0f) ? 1.0f : glm::clamp(w.x / sinTheta, -1.0f, 1.0f);
         }
         __device__ float SinPhi(glm::vec3 w) {
             float sinTheta = SinTheta(w);
-            return (sinTheta == 0) ? 0 : glm::clamp(w.y / sinTheta, -1.0f, 1.0f);
+            return (sinTheta == 0.0f) ? 0.0f : glm::clamp(w.y / sinTheta, -1.0f, 1.0f);
         }
 
         __device__ bool SameHemisphere(glm::vec3 w, glm::vec3 wp) {
-            return w.z * wp.z > 0;
+            return w.z * wp.z > 0.0f;
         }
     }
 }

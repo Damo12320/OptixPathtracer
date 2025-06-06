@@ -5,13 +5,13 @@
 struct Surface {
     glm::mat3 ShadingToWorld, WorldToShading;
 
-    glm::vec3 gNormal, sNormal, stangent, sbitangent;
+    glm::vec3 gNormal, sNormal;
     glm::ivec3 index;
     glm::vec3 vertices[3];
     glm::vec3 position;
     glm::vec2 texCoord;
 
-    glm::vec3 incommingRay;
+    glm::vec3 outgoingRay;
 
     float metallic, roughness;
 

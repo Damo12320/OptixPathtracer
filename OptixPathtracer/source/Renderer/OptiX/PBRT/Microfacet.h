@@ -70,7 +70,7 @@ namespace PBRT { namespace Microfacet {
     __device__ glm::vec3 Sample_wm(unsigned int& randomSeed, glm::vec3 w, float alpha) {
         //<< Transform w to hemispherical configuration >>
         glm::vec3 wh = glm::normalize(glm::vec3(alpha * w.x, alpha * w.y, w.z));
-        if (wh.z < 0)
+        if (wh.z < 0.0f)
             wh = -wh;
 
         //<< Find orthonormal basis for visible normal sampling >>
@@ -81,11 +81,11 @@ namespace PBRT { namespace Microfacet {
         glm::vec2 p = RandomOptix::SampleUniformDiskPolar(randomSeed);
 
         //<< Warp hemispherical projection for visible normal sampling >>
-        float h = std::sqrt(1 - Sqr(p.x));
-        p.y = glm::mix((1 + wh.z) / 2, h, p.y);
+        float h = sqrtf(1 - Sqr(p.x));
+        p.y = glm::mix(h, p.y, (1.0f + wh.z) / 2.0f);
 
         //<< Reproject to hemisphere and transform normal to ellipsoid configuration >>
-        float pz = std::sqrt(glm::max(0.0f, 1.0f - Sqr(glm::length(p))));
+        float pz = sqrtf(glm::max(0.0f, 1.0f - Sqr(glm::length(p))));
         glm::vec3 nh = p.x * T1 + p.y * T2 + pz * wh;
         return glm::normalize(glm::vec3(alpha * nh.x, alpha * nh.y, glm::max(1e-6f, nh.z)));
     }

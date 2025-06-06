@@ -85,3 +85,27 @@ __device__ glm::vec3 Sqr(glm::vec3 value) {
 __device__ float AbsDot(glm::vec3 value1, glm::vec3 value2) {
     return fabsf(glm::dot(value1, value2));
 }
+
+#pragma region DebugMethods
+
+__device__ void Print(const char* name, glm::vec3 vec) {
+    printf("%s : %f, %f, %f \n", name, vec.r, vec.g, vec.b);
+}
+
+__device__ void Print(const char* name, glm::vec3 vec, int bounce) {
+    printf("Bounce %i: %s : %f, %f, %f \n", bounce, name, vec.r, vec.g, vec.b);
+}
+
+__device__ void Print(const char* name, float value) {
+    printf("%s : %f \n", name, value);
+}
+
+__device__ void Print(const char* name, float value, int bounce) {
+    printf("Bounce %i: %s : %f \n", bounce, name, value);
+}
+
+__device__ bool isnan(glm::vec3 vec) {
+    return isnan(vec.x) || isnan(vec.y) || isnan(vec.z);
+}
+
+#pragma endregion

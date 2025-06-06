@@ -28,8 +28,7 @@
 #include "MinimalAgX.h"
 #include "AgxDS.h"
 
-//#include "BRDF/ConductorBRDF.h"
-//#include "BRDF/DielectricBRDF.h"
+#include "RayData.h"
 
 #include "PBRT/Conductor.h"
 
@@ -39,96 +38,6 @@
         optixLaunch (this gets filled in from the buffer we pass to
         optixLaunch) */
 extern "C" __constant__ LaunchParams optixLaunchParams;
-
-
-struct RadianceRayData {
-    glm::vec3 radiance;
-    glm::vec3 beta;
-
-    glm::vec3 nextOrigin;
-    glm::vec3 nextDirection;
-
-    int bounceCounter;
-    int maxBounces;
-
-    unsigned int randomSeed;
-
-    bool isDebugRay;
-};
-
-#pragma region PtrPacking
-
-static __forceinline__ __device__
-void* unpackPointer(uint32_t i0, uint32_t i1)
-{
-    const uint64_t uptr = static_cast<uint64_t>(i0) << 32 | i1;
-    void* ptr = reinterpret_cast<void*>(uptr);
-    return ptr;
-}
-
-static __forceinline__ __device__
-void  packPointer(void* ptr, uint32_t& i0, uint32_t& i1)
-{
-    const uint64_t uptr = reinterpret_cast<uint64_t>(ptr);
-    i0 = uptr >> 32;
-    i1 = uptr & 0x00000000ffffffff;
-}
-
-#pragma endregion
-
-
-#pragma region PerRayDataGetters
-
-template<typename T>
-static __forceinline__ __device__ T* getPRD_1()
-{
-    const uint32_t u0 = optixGetPayload_0();
-    const uint32_t u1 = optixGetPayload_1();
-    return reinterpret_cast<T*>(unpackPointer(u0, u1));
-}
-
-//template<typename T>
-//static __forceinline__ __device__ T* getPRD_2()
-//{
-//    const uint32_t u0 = optixGetPayload_2();
-//    const uint32_t u1 = optixGetPayload_3();
-//    return reinterpret_cast<T*>(unpackPointer(u0, u1));
-//}
-
-//template<typename T>
-//static __forceinline__ __device__ T* getPRD_3()
-//{
-//    const uint32_t u0 = optixGetPayload_4();
-//    const uint32_t u1 = optixGetPayload_5();
-//    return reinterpret_cast<T*>(unpackPointer(u0, u1));
-//}
-
-#pragma endregion
-
-
-#pragma region DebugMethods
-
-__device__ void Print(const char* name, glm::vec3 vec) {
-    printf("%s : %f, %f, %f \n", name, vec.r, vec.g, vec.b);
-}
-
-__device__ void Print(const char* name, glm::vec3 vec, int bounce) {
-    printf("Bounce %i: %s : %f, %f, %f \n", bounce, name, vec.r, vec.g, vec.b);
-}
-
-__device__ void Print(const char* name, float value) {
-    printf("%s : %f \n", name, value);
-}
-
-__device__ void Print(const char* name, float value, int bounce) {
-    printf("Bounce %i: %s : %f \n", bounce, name, value);
-}
-
-__device__ bool isnan(glm::vec3 vec) {
-    return isnan(vec.x) || isnan(vec.y) || isnan(vec.z);
-}
-
-#pragma endregion
 
 
 
@@ -179,7 +88,7 @@ __device__ void GetNormal(MeshSBTData& sbtData, Surface& surface) {
     // face-forward and normalize normals
     // ------------------------------------------------------------------
 
-    if (dot(surface.incommingRay, Ng) > 0.f) Ng = -Ng;
+    if (dot(-surface.outgoingRay, Ng) > 0.f) Ng = -Ng;
     Ng = normalize(Ng);
 
     if (dot(Ng, Ns) < 0.f)
@@ -257,7 +166,7 @@ __device__ void BuildTangentSpace(glm::vec3 normal, glm::vec3& tangent, glm::vec
 }
 
 __device__ glm::mat3 GetTBN(MeshSBTData& sbtData, Surface& surface) {
-    const float u = optixGetTriangleBarycentrics().x;
+    /*const float u = optixGetTriangleBarycentrics().x;
     const float v = optixGetTriangleBarycentrics().y;
 
     glm::vec3 tangent =
@@ -270,10 +179,17 @@ __device__ glm::mat3 GetTBN(MeshSBTData& sbtData, Surface& surface) {
         + u * sbtData.bitangents[surface.index.y]
         + v * sbtData.bitangents[surface.index.z];
 
-
     glm::vec3 T = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(tangent, 0.0)));
     glm::vec3 B = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(bitangent, 0.0)));
-    glm::vec3 N = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(surface.sNormal, 0.0)));
+    glm::vec3 N = glm::normalize(glm::vec3(glm::vec4(surface.sNormal, 0.0)));*/
+
+    glm::vec3 tangent;
+    glm::vec3 bitangent;
+    BuildTangentSpace(surface.sNormal, tangent, bitangent);
+
+    glm::vec3 T = tangent;
+    glm::vec3 B = bitangent;
+    glm::vec3 N = surface.sNormal;
     return glm::mat3(T, B, N);
 }
 
@@ -419,14 +335,14 @@ __device__ bool GetNewRayDirection(unsigned int& seed, Surface& surface, glm::ve
     return true;
 }
 
-__device__ glm::vec3 BRDF(Surface& surface, const glm::vec3 outgoingRay) {
+__device__ glm::vec3 BRDF(Surface& surface, const glm::vec3 incommingRay) {
 
     //glm::vec3 dielectric = DielectricBRDF::DielectricBRDF(surface, outgoingRay);
     //glm::vec3 conductor = ConductorBRDF::ConductorBRDF(surface, outgoingRay);
 
     //return SaveMix(dielectric, conductor, surface.metallic);
 
-    glm::vec3 conductor = PBRT::Conductor::f(surface, outgoingRay);
+    glm::vec3 conductor = PBRT::Conductor::f(surface, incommingRay);
 
     //Diffuse
     return mix(surface.albedo / 3.14159265359f, conductor, surface.metallic);
@@ -441,7 +357,10 @@ extern "C" __global__ void __closesthit__radiance()
     // ------------------------------------------------------------------
     // gather some basic hit information
     // ------------------------------------------------------------------
-    surface.incommingRay = OptixHelpers::Vec3(optixGetWorldRayDirection());
+    RadianceRayData* rayData = (RadianceRayData*)getPRD_1<RadianceRayData>();
+
+    surface.outgoingRay = glm::normalize(-OptixHelpers::Vec3(optixGetWorldRayDirection()));
+    //glm::vec3 hitPoint = rayData->nextOrigin + optixGetRayTmax() * surface.incommingRay;
 
     const int primID = optixGetPrimitiveIndex();
     surface.index = sbtData.index[primID];
@@ -456,16 +375,6 @@ extern "C" __global__ void __closesthit__radiance()
     //Texture Coord
     surface.texCoord = GetTextureCoord(sbtData, surface.index);
 
-    RadianceRayData* rayData = (RadianceRayData*)getPRD_1<RadianceRayData>();
-
-
-    //Transform everything to local Shading Coordinate System
-    surface.ShadingToWorld = GetTBN(sbtData, surface);
-    surface.WorldToShading = glm::transpose(surface.ShadingToWorld);
-
-    surface.sNormal = surface.WorldToShading * surface.sNormal;
-    //surface.gNormal = surface.WorldToShading * surface.gNormal;
-    surface.incommingRay = surface.WorldToShading * surface.incommingRay;
 
     // ------------------------------------------------------------------
     // Get Texture parameters
@@ -476,11 +385,28 @@ extern "C" __global__ void __closesthit__radiance()
     surface.roughness = sbtData.roughness;
     SampleTextures(sbtData, normalTex, surface);
 
+
+    //Normalmapping
+    if (normalTex != glm::vec3(0)) {
+        //Get TBN from mesh shading normal to transform the normalTex to worldspace
+        glm::mat3 tbn = GetTBN(sbtData, surface);
+
+        //Normalize the normalTex and convert to worldspace
+        surface.sNormal = glm::normalize(tbn * (normalTex * glm::vec3(2.0f) - glm::vec3(1.0f)));
+    }
+
     /*if (surface.IsEffectifvelySmooth()) {
-        surface.roughness = 0.05f;
+        surface.roughness = 0.5f;
     }*/
 
-    //NormalMapping(sbtData, surface, normalTex);
+    //Get Final TBN to convert everything to shadingspace -> Normal = (0, 0, 1)
+    surface.ShadingToWorld = GetTBN(sbtData, surface);
+    surface.WorldToShading = glm::transpose(surface.ShadingToWorld);
+    //surface.WorldToShading = glm::inverse(surface.ShadingToWorld);
+
+    //Transform everything to local Shading Coordinate System
+    surface.sNormal = surface.WorldToShading * surface.sNormal;
+    surface.outgoingRay = surface.WorldToShading * surface.outgoingRay;
 
     //------------------------------------------------------------------------------------------
 
@@ -499,6 +425,10 @@ extern "C" __global__ void __closesthit__radiance()
     const float lightVisibility = LightVisibility(pointLight.position, surface.position, surface.gNormal, lightDirection);
     lightDirection = surface.WorldToShading * lightDirection;
 
+    /*if (rayData->isDebugRay) {
+        Print("Beta", rayData->beta, rayData->bounceCounter);
+    }*/
+
     if (lightVisibility > 0) {
         glm::vec3 spectrum = (BRDF(surface, lightDirection)) * AbsDot(lightDirection, surface.sNormal);
 
@@ -506,25 +436,8 @@ extern "C" __global__ void __closesthit__radiance()
 
         if (rayData->isDebugRay) {
             Print("added Radiance", (BRDF(surface, lightDirection)) * fabsf(glm::dot(lightDirection, surface.sNormal)), rayData->bounceCounter);
+            Print("Position", surface.position, rayData->bounceCounter);
         }
-    }
-
-
-    //Sample outgoing direction
-    //float pdf = 0.0f;
-    //glm::vec3 newRayDirection = GetNewRayDirection(rayData->randomSeed, surface, pdf);
-
-    //newRayDirection = glm::reflect(surface.incommingRay, surface.sNormal);
-
-    //float cosTheta = fabsf(glm::dot(newRayDirection, surface.sNormal));
-
-    //rayData->beta *= ( BRDF(surface, newRayDirection) * cosTheta ) / pdf;
-
-    if (rayData->isDebugRay) {
-        //Print("Radiance", rayData->radiance, rayData->bounceCounter);
-        //Print("Beta", rayData->beta, rayData->bounceCounter);
-        //Print("CosTheta", cosTheta, rayData->bounceCounter);
-        //Print("Light visibility", lightVisibility, rayData->bounceCounter);
     }
 
     float pdf;
@@ -532,15 +445,27 @@ extern "C" __global__ void __closesthit__radiance()
     glm::vec3 sample;
     if (!GetNewRayDirection(rayData->randomSeed, surface, newDirection, pdf, sample)) {
         rayData->beta = glm::vec3(0);
+
+        if (rayData->isDebugRay) {
+            printf("End Path");
+        }
+
         return;
     }
 
+    /*if (rayData->isDebugRay) {
+        Print("sample", sample, rayData->bounceCounter);
+        Print("absDot", AbsDot(newDirection, surface.sNormal), rayData->bounceCounter);
+    }*/
+
     rayData->beta *= sample * AbsDot(newDirection, surface.sNormal) / pdf;
 
-    rayData->nextOrigin = surface.position + 1e-3f * (surface.gNormal);
+    rayData->nextOrigin = surface.position + 1e-3f * surface.gNormal;
     rayData->nextDirection = surface.ShadingToWorld * newDirection;
 
-    //rayData->radiance = (surface.ShadingToWorld * surface.sNormal + 1.0f) / 2.0f;
+    //rayData->radiance = (surface.WorldToShading * surface.gNormal + 1.0f) / 2.0f;
+    //rayData->radiance = surface.WorldToShading * surface.gNormal;
+    //rayData->radiance = surface.ShadingToWorld * surface.sNormal;
 }
 
 #pragma region RayAnyhit
@@ -671,19 +596,19 @@ __device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::v
     }
 
     while (raydata.bounceCounter < raydata.maxBounces && glm::length(raydata.beta) > 0.00001) {
-
+    
         /*if (launchIndex == glm::ivec2(1, 1)) {
             PrintVector("Beta", raydata.beta);
         }*/
-
+    
         TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
     }
 
     //TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
 
-    if (launchIndex.x == debugPixel.x || launchIndex.y == debugPixel.y) {
+    /*if (launchIndex.x == debugPixel.x || launchIndex.y == debugPixel.y) {
         return glm::vec3(1, 0, 0);
-    }
+    }*/
 
 
     return raydata.radiance;
