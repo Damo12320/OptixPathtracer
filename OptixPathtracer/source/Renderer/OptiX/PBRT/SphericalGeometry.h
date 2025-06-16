@@ -27,5 +27,11 @@ namespace PBRT {
         __device__ bool SameHemisphere(glm::vec3 w, glm::vec3 wp) {
             return w.z * wp.z > 0.0f;
         }
+
+        __device__ glm::vec3 SphericalDirection(float sinTheta, float cosTheta, float phi) {
+            return glm::vec3(glm::clamp(sinTheta, -1.0f, 1.0f) * std::cos(phi),
+                            glm::clamp(sinTheta, -1.0f, 1.0f) * std::sin(phi),
+                            glm::clamp(cosTheta, -1.0f, 1.0f));
+        }
     }
 }

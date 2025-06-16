@@ -48,6 +48,9 @@
     <ClCompile Include="source\Renderer\OptiX\MinimalAgX.h">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="source\GlmHelperMethods.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\3rdParty\OptixSample\CUDABuffer.h">
@@ -101,7 +104,7 @@
     <ClInclude Include="source\Renderer\OptiX\random.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="source\Renderer\OptiX\Lights.h">
+    <ClInclude Include="source\Renderer\OptiX\LightsStruct.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="source\Renderer\OptiX\glmCUDA.h">
@@ -123,6 +126,24 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="source\Renderer\OptiX\RayData.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\Dielectric.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\LightMethods.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\GlmHelperMethods.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\GlossyDiffuse.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\LambertDiffuse.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\BSDFSample.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

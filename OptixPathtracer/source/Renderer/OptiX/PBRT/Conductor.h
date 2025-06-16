@@ -45,9 +45,9 @@ namespace PBRT {
             if (surface.IsEffectifvelySmooth()) return glm::vec3(0);
 
             float cosTheta_o = SpherGeom::AbsCosTheta(surface.outgoingRay), cosTheta_i = SpherGeom::AbsCosTheta(wi);
-            if (cosTheta_i == 0 || cosTheta_o == 0) return {};
+            if (cosTheta_i == 0 || cosTheta_o == 0) return glm::vec3(0);
             glm::vec3 wm = surface.outgoingRay + wi;
-            if (Sqr(glm::length(wm)) == 0) return {};
+            if (Sqr(glm::length(wm)) == 0) return glm::vec3(0);
             wm = glm::normalize(wm);
 
             //Fresnel
@@ -89,28 +89,28 @@ namespace PBRT {
 
             //wi = glm::normalize(wi);
 
-            if (IsDebugRay() && glm::dot(wm, surface.sNormal) < 0.0f) {
-                printf("wm not in same hemisphere as sNormal \n");
-            }
-
-            if (IsDebugRay() && glm::dot(wi, surface.sNormal) < 0.0f) {
-                printf("wi not in same hemisphere as sNormal \n");
-            }
-
-            if (IsDebugRay() && glm::dot(wi, wm) < 0.0f) {
-                printf("wi not in same hemisphere as wm \n");
-            }
-
-            if (IsDebugRay() && glm::dot(wi, surface.outgoingRay) < 0.0f) {
-                printf("wi not in same hemisphere as outgoingRay \n");
-            }
-
-            if (IsDebugRay()) {
-                Print("sNormal", surface.sNormal);
-                Print("outgoingRay", surface.outgoingRay);
-                Print("wm", wm);
-                Print("wi", wi);
-            }
+            //if (IsDebugRay() && glm::dot(wm, surface.sNormal) < 0.0f) {
+            //    printf("wm not in same hemisphere as sNormal \n");
+            //}
+            //
+            //if (IsDebugRay() && glm::dot(wi, surface.sNormal) < 0.0f) {
+            //    printf("wi not in same hemisphere as sNormal \n");
+            //}
+            //
+            //if (IsDebugRay() && glm::dot(wi, wm) < 0.0f) {
+            //    printf("wi not in same hemisphere as wm \n");
+            //}
+            //
+            //if (IsDebugRay() && glm::dot(wi, surface.outgoingRay) < 0.0f) {
+            //    printf("wi not in same hemisphere as outgoingRay \n");
+            //}
+            //
+            //if (IsDebugRay()) {
+            //    Print("sNormal", surface.sNormal);
+            //    Print("outgoingRay", surface.outgoingRay);
+            //    Print("wm", wm);
+            //    Print("wi", wi);
+            //}
 
             /*if (glm::dot(wm, wi) < 0.0f) {
                 wi = -wi;

@@ -30,9 +30,10 @@ private:
 	std::unique_ptr<ShaderProgramm> combineShader;
 	std::unique_ptr<ShaderProgramm> finalShader;
 
+	int maxSamples = -1;
 	int samples = 0;
 public:
-	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera);
+	OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera, int maxSamples);
 
 	void Run();
 	void Resize(int width, int height);

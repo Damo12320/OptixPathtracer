@@ -666,3 +666,10 @@ void OptixRenderer::SetCamera(Camera* camera) {
     launchParams.camera.inverseViewMatrix = glm::inverse(camera->GetViewMatrix());
     launchParams.camera.inverseProjectionMatrix = glm::inverse(camera->GetProjectionMatrix(aspect));
 }
+
+void OptixRenderer::SetLights(std::vector<PointLight>* lights) {
+    this->pointlightBuffer.alloc_and_upload(*lights);
+    this->launchParams.pointlights = (PointLight*)this->pointlightBuffer.d_pointer();
+
+    this->launchParams.pointLightCount = lights->size();
+}

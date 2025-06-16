@@ -74,6 +74,10 @@ __device__ glm::vec3 SaveMax(glm::vec3 value1, float value2) {
     return temp;
 }
 
+__device__ float SaveMax(glm::vec3 value) {
+    return glm::max(glm::max(value.x, value.y), value.z);
+}
+
 __device__ float Sqr(float value) {
     return value * value;
 }

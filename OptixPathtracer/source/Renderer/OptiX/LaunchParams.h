@@ -2,6 +2,7 @@
 
 #include "../../3rdParty/OptixSample/optix7.h"
 #include "../../3rdParty/glm/glm.hpp"
+#include "LightsStruct.h"
 
 enum { RADIANCE_RAY_TYPE = 0, SHADOW_RAY_TYPE, RAY_TYPE_COUNT };
 
@@ -18,6 +19,9 @@ struct LaunchParams
         glm::mat4x4 inverseViewMatrix;
         glm::mat4x4 inverseProjectionMatrix;
     } camera;
+
+    PointLight* pointlights;
+    int pointLightCount;
 
     OptixTraversableHandle traversable;
 };

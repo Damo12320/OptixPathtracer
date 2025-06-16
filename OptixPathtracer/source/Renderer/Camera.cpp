@@ -1,6 +1,7 @@
 #include "Camera.h"
 
 #include "../3rdParty/glm/gtc/matrix_transform.hpp"
+#include "../GlmHelperMethods.h"
 
 Camera::Camera() {
 	this->horizontalFOV_radians = glm::radians(40.0f);
@@ -14,11 +15,13 @@ void Camera::SetHorizontalFOV(float degrees) {
 }
 
 void Camera::SetBlenderPosition(glm::vec3 blenderPosition) {
-	this->position = glm::vec3(blenderPosition.x, blenderPosition.z, -blenderPosition.y);
+	//this->position = glm::vec3(blenderPosition.x, blenderPosition.z, -blenderPosition.y);
+	this->position = GlmHelper::BlenderToEnginePosition(blenderPosition);
 }
 
 void Camera::SetBlenderRotation(glm::vec3 blenderRotation) {
-	this->rotation = glm::vec3(90 - blenderRotation.x, 180 + blenderRotation.z, blenderRotation.y);
+	//this->rotation = glm::vec3(90 - blenderRotation.x, 180 + blenderRotation.z, blenderRotation.y);
+	this->rotation = GlmHelper::BlenderToEngineRotation(blenderRotation);
 }
 
 #pragma endregion

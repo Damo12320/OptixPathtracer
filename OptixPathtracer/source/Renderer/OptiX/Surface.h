@@ -17,7 +17,13 @@ struct Surface {
 
     glm::vec3 albedo;
 
+    bool conductor;
+
+    __device__ static bool IsEffectifvelySmooth(float r) {
+        return r < 0.0001;
+    }
+
     __device__ bool IsEffectifvelySmooth() {
-        return this->roughness < 0.0001;
+        return IsEffectifvelySmooth(this->roughness);
     }
 };

@@ -85,7 +85,9 @@ static void OnKeyPressed(GLFWwindow* window, int key, int scancode, int action, 
 #pragma endregion
 
 
-OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera) {
+OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* model, std::unique_ptr<Camera> camera, int maxSamples) {
+	this->maxSamples = maxSamples;
+
 	this->window = std::unique_ptr<OpenGLWindow>(new OpenGLWindow(viewSize));
 	this->optixRenderer = std::unique_ptr<OptixRenderer>(new OptixRenderer(viewDef.ptxPath, model));
 
@@ -128,28 +130,39 @@ void OptixView::Run() {
 
 	//Render Loop
 	while (!glfwWindowShouldClose(this->window->window)) {
-		this->optixRenderer->SetCamera(this->camera.get());
 
-		//Optix
-		this->DrawOptix(this->newFrame.get());
+		if (this->maxSamples < 0 || this->samples <= this->maxSamples) {
+			this->optixRenderer->SetCamera(this->camera.get());
 
-		if (this->clearFrameBuffer) {
-			this->clearFrameBuffer = false;
+			//Optix
+			this->DrawOptix(this->newFrame.get());
 
-			this->framebuffer->Bind();
-			glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			if (this->clearFrameBuffer) {
+				this->clearFrameBuffer = false;
 
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				this->framebuffer->Bind();
+				glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT);
 
-			this->samples = 0;
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+				this->samples = 0;
+			}
+
+			//OpenGL
+			glDisable(GL_DEPTH_TEST);
+			glViewport(0, 0, this->viewSize.x, this->viewSize.y);
+
+			this->AddNewFrameToBuffer(this->newFrame.get(), this->framebuffer.get());
+
+			if (samples % 10 == 0) {
+				std::cout << "at Sample: " << samples << std::endl;
+			}
 		}
-
-		//OpenGL
-		glDisable(GL_DEPTH_TEST);
-		glViewport(0, 0, this->viewSize.x, this->viewSize.y);
-
-		this->AddNewFrameToBuffer(this->newFrame.get(), this->framebuffer.get());
+		else if (this->samples == this->maxSamples + 1) {
+			std::cout << "Render is finished" << std::endl;
+			this->samples++;
+		}
 
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -214,7 +227,18 @@ void OptixView::AddNewFrameToBuffer(GLTexture2D* newFrame, Framebuffer* buffer) 
 
 	//Set Weight
 	this->samples++;
-	float frameWeight = 1.0 / this->samples;
+	float frameWeight = 0;
+
+	bool addContinuously = this->maxSamples < 0;
+
+	if (addContinuously) {
+		frameWeight = 1.0f / this->samples;
+	}
+	else {
+		frameWeight = 1.0f / this->maxSamples;
+	}
+
+	this->combineShader->SetBool("addContinuously", addContinuously);
 	this->combineShader->SetFloat("weight", frameWeight);
 
 	//Bind buffer
