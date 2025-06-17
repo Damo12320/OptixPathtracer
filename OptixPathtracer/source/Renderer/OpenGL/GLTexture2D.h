@@ -25,5 +25,5 @@ public:
 	void BindToUnit(GLuint unit);
 	void Bind();
 
-	void SetData(uint32_t pixels[], glm::ivec2 size);
+	void SetData(glm::vec3 pixels[], glm::ivec2 size);
 };

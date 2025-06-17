@@ -9,7 +9,7 @@ enum { RADIANCE_RAY_TYPE = 0, SHADOW_RAY_TYPE, RAY_TYPE_COUNT };
 struct LaunchParams
 {
     struct {
-        uint32_t* colorBuffer;
+        glm::vec3* colorBuffer;
         glm::ivec2     size;
         unsigned int id = 0;
     } frame;
@@ -22,6 +22,8 @@ struct LaunchParams
 
     PointLight* pointlights;
     int pointLightCount;
+
+    int maxBounces;
 
     OptixTraversableHandle traversable;
 };

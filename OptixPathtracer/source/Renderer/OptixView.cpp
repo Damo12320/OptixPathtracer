@@ -92,11 +92,11 @@ OptixView::OptixView(OptixViewDefinition viewDef, glm::ivec2 viewSize, Model* mo
 	this->optixRenderer = std::unique_ptr<OptixRenderer>(new OptixRenderer(viewDef.ptxPath, model));
 
 	//Texture to store the new Frame
-	this->newFrame = std::unique_ptr<GLTexture2D>(new GLTexture2D(viewSize));
+	this->newFrame = std::unique_ptr<GLTexture2D>(new GLTexture2D(viewSize, GL_RGB32F));
 
 	//FrameBuffer
 	this->framebuffer = std::unique_ptr<Framebuffer>(new Framebuffer());
-	this->framebuffer->AttachNewTexture2D(GL_COLOR_ATTACHMENT0, viewSize);
+	this->framebuffer->AttachNewTexture2D(GL_COLOR_ATTACHMENT0, viewSize, GL_RGB32F);
 
 	if (!this->framebuffer->IsComplete()) {
 		std::cout << "ERROR::OPTIXVIEW::CONSTRUCTOR::FRAMEBUFFER_NOT_COMPLETE" << std::endl;
@@ -197,7 +197,7 @@ void OptixView::Resize(glm::ivec2 viewSize) {
 
 void OptixView::DrawOptix(GLTexture2D* texture) {
 	//Pixel Storage
-	std::vector<uint32_t> pixels;
+	std::vector<glm::vec3> pixels;
 	pixels.resize(this->viewSize.x * this->viewSize.y);
 
 	//Render Optix

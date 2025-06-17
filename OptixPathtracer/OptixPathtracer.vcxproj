@@ -24,11 +24,11 @@
     <ClCompile Include="source\ModelLoading\Mesh.cpp" />
     <ClCompile Include="source\ModelLoading\ModelLoader.cpp" />
     <ClCompile Include="source\Renderer\Camera.cpp" />
+    <ClCompile Include="source\Renderer\Images\WriteImage.cpp" />
     <ClCompile Include="source\Renderer\OpenGLWindow.cpp" />
     <ClCompile Include="source\Renderer\OpenGL\Framebuffer.cpp" />
     <ClCompile Include="source\Renderer\OpenGL\GLTexture2D.cpp" />
     <ClCompile Include="source\Renderer\OptixView.cpp" />
-    <ClCompile Include="source\Renderer\OptiX\MinimalAgX.h" />
     <ClCompile Include="source\Renderer\OptiX\OptixRenderer.cpp" />
     <ClCompile Include="source\Renderer\OpenGL\ShaderProgramm.cpp" />
   </ItemGroup>
@@ -41,11 +41,11 @@
     <ClInclude Include="source\ModelLoading\ModelLoader.h" />
     <ClInclude Include="source\ModelLoading\Texture.h" />
     <ClInclude Include="source\Renderer\Camera.h" />
+    <ClInclude Include="source\Renderer\Images\WriteImage.h" />
     <ClInclude Include="source\Renderer\OpenGLWindow.h" />
     <ClInclude Include="source\Renderer\OpenGL\Framebuffer.h" />
     <ClInclude Include="source\Renderer\OpenGL\GLTexture2D.h" />
     <ClInclude Include="source\Renderer\OptixView.h" />
-    <ClInclude Include="source\Renderer\OptiX\AgxDS.h" />
     <ClInclude Include="source\Renderer\OptiX\glmCUDA.h" />
     <ClInclude Include="source\Renderer\OptiX\LaunchParams.h" />
     <ClInclude Include="source\Renderer\OptiX\LightMethods.h" />

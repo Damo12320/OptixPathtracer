@@ -614,7 +614,7 @@ void OptixRenderer::CreateTextures() {
 #pragma endregion
 
 // render one frame
-void OptixRenderer::Render(uint32_t h_pixels[])
+void OptixRenderer::Render(glm::vec3 h_pixels[])
 {
     // sanity check: make sure we launch only after first resize is
     // already done:
@@ -651,12 +651,12 @@ void OptixRenderer::Resize(glm::ivec2& newSize) {
     if (newSize.x == 0 || newSize.y == 0) return;
 
     // resize our cuda frame buffer
-    this->colorBuffer.resize(newSize.x * newSize.y * sizeof(uint32_t));
+    this->colorBuffer.resize(newSize.x * newSize.y * sizeof(glm::vec3));
 
     // update the launch parameters that we'll pass to the optix
     // launch:
     this->launchParams.frame.size = newSize;
-    this->launchParams.frame.colorBuffer = (uint32_t*)colorBuffer.d_pointer();
+    this->launchParams.frame.colorBuffer = (glm::vec3*)colorBuffer.d_pointer();
 }
 
 void OptixRenderer::SetCamera(Camera* camera) {
@@ -672,4 +672,8 @@ void OptixRenderer::SetLights(std::vector<PointLight>* lights) {
     this->launchParams.pointlights = (PointLight*)this->pointlightBuffer.d_pointer();
 
     this->launchParams.pointLightCount = lights->size();
+}
+
+void OptixRenderer::SetMaxBounces(int maxBounces) {
+    this->launchParams.maxBounces = maxBounces;
 }

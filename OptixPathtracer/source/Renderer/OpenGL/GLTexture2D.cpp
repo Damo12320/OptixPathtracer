@@ -62,9 +62,9 @@ void GLTexture2D::Bind() {
 	glBindTexture(GL_TEXTURE_2D, this->ID);
 }
 
-void GLTexture2D::SetData(uint32_t pixels[], glm::ivec2 size) {
+void GLTexture2D::SetData(glm::vec3 pixels[], glm::ivec2 size) {
 	this->width = size.x;
 	this->height = size.y;
 
-	glTextureSubImage2D(this->ID, 0, 0, 0, size.x, size.y, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+	glTextureSubImage2D(this->ID, 0, 0, 0, size.x, size.y, GL_RGB, GL_FLOAT, pixels);
 }

@@ -12,10 +12,10 @@ void main()
 {
     vec3 finalColor = texture(image, uv).rgb;
 
-    //finalColor = AgX_DS(finalColor, 0.45, 1.06, 0.18, 1.0, 0.1);//Settings taken from IDKEngine (VoxelConeTracing)
-    //finalColor = clamp(finalColor, vec3(0.0), vec3(1.0));
+    finalColor = AgX_DS(finalColor, 0.45, 1.06, 0.18, 1.0, 0.1);//Settings taken from IDKEngine (VoxelConeTracing)
+    finalColor = clamp(finalColor, vec3(0.0), vec3(1.0));
 
-	color = finalColor;
+	color = vec4(finalColor, 1.0);
 }
 
 

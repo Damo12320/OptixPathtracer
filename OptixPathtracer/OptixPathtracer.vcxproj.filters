@@ -45,10 +45,10 @@
     <ClCompile Include="source\Renderer\OpenGL\GLTexture2D.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="source\Renderer\OptiX\MinimalAgX.h">
+    <ClCompile Include="source\GlmHelperMethods.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="source\GlmHelperMethods.cpp">
+    <ClCompile Include="source\Renderer\Images\WriteImage.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -110,9 +110,6 @@
     <ClInclude Include="source\Renderer\OptiX\glmCUDA.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="source\Renderer\OptiX\AgxDS.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="source\Renderer\OptiX\Surface.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -144,6 +141,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="source\Renderer\OptiX\PBRT\BSDFSample.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Renderer\Images\WriteImage.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

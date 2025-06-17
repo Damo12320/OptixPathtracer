@@ -26,8 +26,6 @@
 
 #include "LightsStruct.h"
 #include "LightMethods.h"
-#include "MinimalAgX.h"
-#include "AgxDS.h"
 
 #include "RayData.h"
 
@@ -196,41 +194,6 @@ __device__ glm::mat3 GetTBN(MeshSBTData& sbtData, Surface& surface) {
     glm::vec3 N = surface.sNormal;
     return glm::mat3(T, B, N);
 }
-
-//__device__ void NormalMapping(MeshSBTData& sbtData, Surface& surface, glm::vec3 normalTex) {
-//    if (normalTex == glm::vec3(0)) {
-//        BuildTangentSpace(surface.sNormal, surface.stangent, surface.sbitangent);
-//        return;
-//    }
-//
-//    //worldspace TBN
-//    const float u = optixGetTriangleBarycentrics().x;
-//    const float v = optixGetTriangleBarycentrics().y;
-//
-//
-//    glm::vec3 tangent = 
-//        (1.f - u - v)   * sbtData.tangents[surface.index.x]
-//        + u             * sbtData.tangents[surface.index.y]
-//        + v             * sbtData.tangents[surface.index.z];
-//
-//    glm::vec3 bitangent =
-//        (1.f - u - v)   * sbtData.bitangents[surface.index.x]
-//        + u             * sbtData.bitangents[surface.index.y]
-//        + v             * sbtData.bitangents[surface.index.z];
-//
-//
-//    glm::vec3 T = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(tangent, 0.0)));
-//    glm::vec3 B = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(bitangent, 0.0)));
-//    glm::vec3 N = glm::normalize(glm::vec3(sbtData.modelMatrix * glm::vec4(surface.sNormal, 0.0)));
-//    glm::mat3 fragTBN = glm::mat3(T, B, N);
-//
-//
-//    Print("Normal", glm::transpose(fragTBN) * surface.sNormal);
-//
-//    glm::vec3 normal = normalTex * glm::vec3(2.0) - glm::vec3(1.0);
-//    surface.sNormal = glm::normalize(fragTBN * normal);
-//    BuildTangentSpace(surface.sNormal, surface.stangent, surface.sbitangent);
-//}
 
 #pragma region RayTracingMethods
 
@@ -471,7 +434,7 @@ extern "C" __global__ void __closesthit__radiance()
         const float lightVisibility = LightVisibility(pointLight->position, surface.position, surface.gNormal, lightDirection);
         lightDirection = surface.WorldToShading * lightDirection;
 
-        if (lightVisibility > 0) {
+        if (lightVisibility > 0.0f) {
             glm::vec3 spectrum = (BRDF(rayData->randomSeed, surface, lightDirection)) * AbsDot(lightDirection, surface.sNormal);
 
             rayData->radiance += (rayData->beta * spectrum * Lighting::GetSample(surface.position, pointLight)) / (lightPropability * Lighting::GetPDF(pointLight));// ( sampleWeight * surface * light ) / light propability * PDF
@@ -479,7 +442,7 @@ extern "C" __global__ void __closesthit__radiance()
             if (rayData->isDebugRay) {
                 //Print("added Radiance", (BRDF(rayData->randomSeed, surface, lightDirection)) * fabsf(glm::dot(lightDirection, surface.sNormal)), rayData->bounceCounter);
                 //Print("BRDF", BRDF(rayData->randomSeed, surface, lightDirection), rayData->bounceCounter);
-                Print("Position", surface.position, rayData->bounceCounter);
+                //Print("Position", surface.position, rayData->bounceCounter);
             }
         }
     }
@@ -663,58 +626,6 @@ __device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::v
     //return glm::vec3(1, 1, 1);
 }
 
-//ACES Approximation from https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-__device__ glm::vec3 TonemapACES(glm::vec3 vector) {
-    const float a = 2.51f;
-    const float b = 0.03f;
-    const float c = 2.43f;
-    const float d = 0.59f;
-    const float e = 0.14f;
-
-    glm::vec3 temp = vector;
-    temp.x = glm::clamp((vector.x * (a * vector.x + b)) / (vector.x * (c * vector.x + d) + e), 0.0f, 1.0f);
-    temp.y = glm::clamp((vector.y * (a * vector.y + b)) / (vector.y * (c * vector.y + d) + e), 0.0f, 1.0f);
-    temp.z = glm::clamp((vector.z * (a * vector.z + b)) / (vector.z * (c * vector.z + d) + e), 0.0f, 1.0f);
-
-    return temp;
-}
-
-
-//From IDKEngine (VoxelConeTracing)
-__device__ glm::vec3 LinearToSrgb(glm::vec3 linearRgb)
-{
-    glm::bvec3 cutoff = glm::lessThan(linearRgb, glm::vec3(0.0031308));
-    glm::vec3 higher = glm::vec3(1.055) * SavePow(linearRgb, glm::vec3(1.0 / 2.4)) - glm::vec3(0.055);
-    glm::vec3 lower = linearRgb * glm::vec3(12.92);
-    glm::vec3 result = SaveMix(higher, lower, cutoff);
-    return result;
-}
-
-//From IDKEngine (VoxelConeTracing)
-__device__ glm::vec3 Dither(glm::vec3 color, glm::ivec2 imgCoord)
-{
-    // Source: https://github.com/turanszkij/WickedEngine/blob/master/WickedEngine/shaders/globals.hlsli#L824
-    const float BayerMatrix8[8][8] =
-    {
-        { 1.0 / 65.0, 49.0 / 65.0, 13.0 / 65.0, 61.0 / 65.0, 4.0 / 65.0, 52.0 / 65.0, 16.0 / 65.0, 64.0 / 65.0 },
-        { 33.0 / 65.0, 17.0 / 65.0, 45.0 / 65.0, 29.0 / 65.0, 36.0 / 65.0, 20.0 / 65.0, 48.0 / 65.0, 32.0 / 65.0 },
-        { 9.0 / 65.0, 57.0 / 65.0, 5.0 / 65.0, 53.0 / 65.0, 12.0 / 65.0, 60.0 / 65.0, 8.0 / 65.0, 56.0 / 65.0 },
-        { 41.0 / 65.0, 25.0 / 65.0, 37.0 / 65.0, 21.0 / 65.0, 44.0 / 65.0, 28.0 / 65.0, 40.0 / 65.0, 24.0 / 65.0 },
-        { 3.0 / 65.0, 51.0 / 65.0, 15.0 / 65.0, 63.0 / 65.0, 2.0 / 65.0, 50.0 / 65.0, 14.0 / 65.0, 62.0 / 65.0 },
-        { 35.0 / 65.0, 19.0 / 65.0, 47.0 / 65.0, 31.0 / 65.0, 34.0 / 65.0, 18.0 / 65.0, 46.0 / 65.0, 30.0 / 65.0 },
-        { 11.0 / 65.0, 59.0 / 65.0, 7.0 / 65.0, 55.0 / 65.0, 10.0 / 65.0, 58.0 / 65.0, 6.0 / 65.0, 54.0 / 65.0 },
-        { 43.0 / 65.0, 27.0 / 65.0, 39.0 / 65.0, 23.0 / 65.0, 42.0 / 65.0, 26.0 / 65.0, 38.0 / 65.0, 22.0 / 65.0 }
-    };
-    glm::uint len = 8 * 8;
-
-    int x = imgCoord.x % 8;
-    int y = imgCoord.y % 8;
-    float ditherVal = (BayerMatrix8[x][y] - 0.5) / len;
-
-    glm::vec3 dithered = color + ditherVal;
-
-    return dithered;
-}
 
 extern "C" __global__ void __raygen__renderFrame()
 {
@@ -737,22 +648,11 @@ extern "C" __global__ void __raygen__renderFrame()
     ////Trace Rays
     //TraceRadiance(origin, ray_dir, 0.1f, 100.0f, &raydata);
 
-    glm::vec3 pathRadiance = SamplePath(launchIndex, origin, ray_dir, 3);
+    glm::vec3 pathRadiance = SamplePath(launchIndex, origin, ray_dir, optixLaunchParams.maxBounces);
 
-    //tonemapping
-    //pathRadiance = TonemapACES(pathRadiance);
-
-
-    pathRadiance = AgX_DS(pathRadiance, 0.45, 1.06, 0.18, 1.0, 0.1);//Settings taken from IDKEngine (VoxelConeTracing)
-    pathRadiance = SaveClamp(pathRadiance, 0.0, 1.0);
-
-
-    //pathRadiance = LinearToSrgb(pathRadiance);
-    //pathRadiance = Dither(pathRadiance, launchIndex);
-
-    const int r = int(255.99f * pathRadiance.x);
-    const int g = int(255.99f * pathRadiance.y);
-    const int b = int(255.99f * pathRadiance.z);
+    //const int r = int(255.99f * pathRadiance.x);
+    //const int g = int(255.99f * pathRadiance.y);
+    //const int b = int(255.99f * pathRadiance.z);
 
     /*if (pathRadiance.x < 0 || pathRadiance.y < 0 || pathRadiance.z < 0) {
         printf("djkhskdnajskdajshkdnjksndjkandkjnjdksnjdkanskjd");
@@ -760,12 +660,12 @@ extern "C" __global__ void __raygen__renderFrame()
 
     // convert to 32-bit rgba value (we explicitly set alpha to 0xff
     // to make stb_image_write happy ...
-    const uint32_t rgba = 0xff000000
-        | (r << 0) | (g << 8) | (b << 16);
+    //const uint32_t rgba = 0xff000000
+        //| (r << 0) | (g << 8) | (b << 16);
 
     // and write to frame buffer ...
     const uint32_t fbIndex = launchIndex.x + launchIndex.y * optixLaunchParams.frame.size.x;
-    optixLaunchParams.frame.colorBuffer[fbIndex] = rgba;
+    optixLaunchParams.frame.colorBuffer[fbIndex] = pathRadiance;
 }
 
 #pragma endregion

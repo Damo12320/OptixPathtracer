@@ -69,10 +69,11 @@ public:
     // resize frame buffer to given resolution
     void Resize(glm::ivec2& newSize);
 
-    void Render(uint32_t h_pixels[]);
+    void Render(glm::vec3 h_pixels[]);
 
     void SetCamera(Camera* camera);
     void SetLights(std::vector<PointLight>* lights);
+    void SetMaxBounces(int maxBounces);
 
 private:
     /*! helper function that initializes optix and checks for errors */

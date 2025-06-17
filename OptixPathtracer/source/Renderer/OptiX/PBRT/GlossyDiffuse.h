@@ -258,7 +258,7 @@ namespace PBRT {
                                 glm::vec3 fExit = LambertDiffuse::f(surface.roughness, surface.albedo, -w, wi);
                                 if (fExit != glm::vec3(0)) {
                                     //float exitPDF = LambertDiffuse::PDF(-w, wi, mode, BxDFReflTransFlags::Transmission);
-                                    float exitPDF = LambertDiffuse::PDF();
+                                    float exitPDF = LambertDiffuse::PDF(-w, wi);
                                     float wt = PowerHeuristic(1, ps.pdf, 1, exitPDF);
                                     f += beta * Transmittance(zp - exitZ, ps.wi) * fExit * wt;
                                 }
@@ -316,7 +316,7 @@ namespace PBRT {
                                 float wt = 1;
                                 if (!surface.IsEffectifvelySmooth()) {//!IsSpecular(nonExitInterface.Flags())
                                     //float exitPDF = exitInterface.PDF( -w, wi, mode, BxDFReflTransFlags::Transmission);
-                                    float exitPDF = LambertDiffuse::PDF();
+                                    float exitPDF = LambertDiffuse::PDF(-w, wi);
                                     wt = PowerHeuristic(1, bs.pdf, 1, exitPDF);
                                 }
                                 f += beta * Transmittance(thickness, bs.direction) * fExit * wt;
