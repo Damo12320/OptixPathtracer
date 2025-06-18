@@ -2,13 +2,13 @@
 
 #include "Microfacet.h"
 #include "../Surface.h"
-#include "../RayData.h"
+//#include "../RayData.h"
 
 namespace PBRT {
     namespace Conductor {
 #pragma region OpenPBR Fresnel
 
-		__device__ glm::vec3 FresnelSchlick(glm::vec3 F0, float mu) {
+		__device__ __host__ glm::vec3 FresnelSchlick(glm::vec3 F0, float mu) {
 			return F0 + (glm::vec3(1.0) - F0) * powf(1 - mu, 5);
 		}
 
@@ -20,7 +20,7 @@ namespace PBRT {
 		* @param float mu = the cosine of the incident angle
 		*
 		*/
-		__device__ glm::vec3 Fresnel82(glm::vec3 specularColor, glm::vec3 F0, float absCosTheta) {
+		__device__ __host__ glm::vec3 Fresnel82(glm::vec3 specularColor, glm::vec3 F0, float absCosTheta) {
 			const float mu = absCosTheta;
 
 			const float mu_ = 1.0f / 7.0f;
@@ -39,7 +39,7 @@ namespace PBRT {
 
 #pragma endregion
 
-        __device__ glm::vec3 f(Surface& surface, glm::vec3 wi) {
+        __device__ __host__ glm::vec3 f(Surface& surface, glm::vec3 wi) {
 			if (wi.z == 0 || surface.outgoingRay.z == 0) return glm::vec3(0);
             if (!SpherGeom::SameHemisphere(wi, surface.outgoingRay)) return glm::vec3(0);
             if (surface.IsEffectifvelySmooth()) return glm::vec3(0);
@@ -61,7 +61,7 @@ namespace PBRT {
                 (4 * cosTheta_i * cosTheta_o);
         }
 
-		__device__ bool Sample_f(unsigned int& randomSeed, Surface& surface, glm::vec3& wi, float& pdf, glm::vec3& sample) {
+		__device__ __host__ bool Sample_f(unsigned int& randomSeed, Surface& surface, glm::vec3& wi, float& pdf, glm::vec3& sample) {
             const glm::vec3 specularColor = glm::vec3(1);//white -> physically correct/ no influence
             
             //if (!(sampleFlags & BxDFReflTransFlags::Reflection)) return {};

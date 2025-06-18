@@ -19,11 +19,11 @@ struct Surface {
 
     bool conductor;
 
-    __device__ static bool IsEffectifvelySmooth(float r) {
+    __device__ __host__ static bool IsEffectifvelySmooth(float r) {
         return r < 0.0001;
     }
 
-    __device__ bool IsEffectifvelySmooth() {
+    __device__ __host__ bool IsEffectifvelySmooth() {
         return IsEffectifvelySmooth(this->roughness);
     }
 };

@@ -2,13 +2,13 @@
 
 #include "Microfacet.h"
 #include "../Surface.h"
-#include "../RayData.h"
+//#include "../RayData.h"
 #include "BSDFSample.h"
 
 namespace PBRT {
     namespace Dielectric {
 
-        __device__ float FresnelDielectric(float cosTheta_i, float ior = 1.5f) {
+        __device__ __host__ float FresnelDielectric(float cosTheta_i, float ior = 1.5f) {
             //ior = 1.5f;
 
             cosTheta_i = glm::clamp(cosTheta_i, -1.0f, 1.0f);
@@ -32,7 +32,7 @@ namespace PBRT {
             return (Sqr(r_parl) + Sqr(r_perp)) / 2.0f;
         }
 
-        __device__ bool Refract(glm::vec3 wi, glm::vec3 n, float eta, float* etap, glm::vec3* wt) {
+        __device__ __host__ bool Refract(glm::vec3 wi, glm::vec3 n, float eta, float* etap, glm::vec3* wt) {
             float cosTheta_i = glm::dot(n, wi);
             //<< Potentially flip interface orientation for Snell’s law >>
             if (cosTheta_i < 0.0f) {
@@ -58,7 +58,7 @@ namespace PBRT {
 
 
 
-        __device__ glm::vec3 f(float roughness, glm::vec3 wo, glm::vec3 wi) {
+        __device__ __host__ glm::vec3 f(float roughness, glm::vec3 wo, glm::vec3 wi) {
             const float eta = 1.5f;
 
             const bool reflection = true;
@@ -118,7 +118,7 @@ namespace PBRT {
 
 
 
-        __device__ bool Sample_f(unsigned int& randomSeed, float roughness, glm::vec3 wo, BSDFSample& sample) {
+        __device__ __host__ bool Sample_f(unsigned int& randomSeed, float roughness, glm::vec3 wo, BSDFSample& sample) {
             const float eta = 1.5f;
 
             const bool reflection = true;
@@ -256,7 +256,7 @@ namespace PBRT {
         }
 
 
-        __device__ float PDF(float roughness, glm::vec3 wo, glm::vec3 wi) {
+        __device__ __host__ float PDF(float roughness, glm::vec3 wo, glm::vec3 wi) {
             const float eta = 1.5f;
 
             const float alpha = Sqr(roughness);

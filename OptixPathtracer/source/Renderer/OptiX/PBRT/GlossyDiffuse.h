@@ -16,18 +16,18 @@ namespace PBRT {
         struct Frame {
             glm::vec3 x, y, z;
 
-            __device__ Frame(glm::vec3 x, glm::vec3 y, glm::vec3 z) {
+            __device__ __host__ Frame(glm::vec3 x, glm::vec3 y, glm::vec3 z) {
                 this->x = x;
                 this->y = y;
                 this->z = z;
             }
 
-            __device__ glm::vec3 FromLocal(glm::vec3 v) const {
+            __device__ __host__ glm::vec3 FromLocal(glm::vec3 v) const {
                 return v.x * x + v.y * y + v.z * z;
             }
         };
 
-        __device__ void CoordinateSystem(glm::vec3 v1, glm::vec3* v2, glm::vec3* v3) {
+        __device__ __host__ void CoordinateSystem(glm::vec3 v1, glm::vec3* v2, glm::vec3* v3) {
             float sign = copysign(float(1), v1.z);
             float a = -1 / (sign + v1.z);
             float b = v1.x * v1.y * a;
@@ -35,20 +35,20 @@ namespace PBRT {
             *v3 = glm::vec3(b, sign + Sqr(v1.y) * a, -v1.y);
         }
 
-        __device__ Frame FromZ(glm::vec3 z) {
+        __device__ __host__ Frame FromZ(glm::vec3 z) {
             glm::vec3 x, y;
             CoordinateSystem(z, &x, &y);
             return Frame(x, y, z);
         }
 
-        __device__ float HenyeyGreenstein(float cosTheta, float g) {
+        __device__ __host__ float HenyeyGreenstein(float cosTheta, float g) {
             const float inv4Pi = 0.07957747154594766788f;
 
             float denom = 1 + Sqr(g) + 2 * g * cosTheta;
             return inv4Pi * (1 - Sqr(g)) / (denom * sqrt(denom));
         }
 
-        __device__ glm::vec3 SampleHenyeyGreenstein(glm::vec3 wo, float g, glm::vec2 u, float* pdf) {
+        __device__ __host__ glm::vec3 SampleHenyeyGreenstein(glm::vec3 wo, float g, glm::vec2 u, float* pdf) {
             const float pi = 3.14159265358979323846;
 
             //<< Compute for Henyey–Greenstein sample >>
@@ -70,28 +70,28 @@ namespace PBRT {
             return wi;
         }
 
-        __device__ PhaseFunctionSample PhaseFunction_Sample_p(glm::vec3 wo, glm::vec2 u, float g) {
+        __device__ __host__ PhaseFunctionSample PhaseFunction_Sample_p(glm::vec3 wo, glm::vec2 u, float g) {
             float pdf;
             glm::vec3 wi = SampleHenyeyGreenstein(wo, g, u, &pdf);
             return PhaseFunctionSample{ pdf, wi, pdf };
         }
 
-        __device__ float PhaseFunction_p(glm::vec3 wo, glm::vec3 wi, float g) {
+        __device__ __host__ float PhaseFunction_p(glm::vec3 wo, glm::vec3 wi, float g) {
             return HenyeyGreenstein(glm::dot(wo, wi), g);
         }
 
-        __device__ float PDF(glm::vec3 wo, glm::vec3 wi, float g) {
+        __device__ __host__ float PDF(glm::vec3 wo, glm::vec3 wi, float g) {
             return PhaseFunction_p(wo, wi, g);
         }
 
 #pragma endregion
 
-        __device__ float PowerHeuristic(int nf, float fPdf, int ng, float gPdf) {
+        __device__ __host__ float PowerHeuristic(int nf, float fPdf, int ng, float gPdf) {
             float f = nf * fPdf, g = ng * gPdf;
             return Sqr(f) / (Sqr(f) + Sqr(g));
         }
 
-        __device__ float Transmittance(float dz, glm::vec3 w) {
+        __device__ __host__ float Transmittance(float dz, glm::vec3 w) {
             //return FastExp(-std::abs(dz / w.z));
             return glm::exp(-std::abs(dz / w.z));
         }
@@ -114,7 +114,7 @@ namespace PBRT {
         // Bottom interface: Diffuse
         // Always enter on top
 
-        __device__ glm::vec3 f(unsigned int& randomSeed, Surface& surface, glm::vec3 wi) {
+        __device__ __host__ glm::vec3 f(unsigned int& randomSeed, Surface& surface, glm::vec3 wi) {
             const int nSamples = 5;
             const float thickness = 0.0001f;
             const int maxDepth = 5;
@@ -343,7 +343,7 @@ namespace PBRT {
 
 
 
-        __device__ bool Sample_f(unsigned int& randomSeed, Surface& surface, BSDFSample& sample) {
+        __device__ __host__ bool Sample_f(unsigned int& randomSeed, Surface& surface, BSDFSample& sample) {
             const int nSamples = 5;
             const float thickness = 0.0001f;
             const int maxDepth = 5;

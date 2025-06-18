@@ -7,7 +7,7 @@ namespace PBRT { namespace Microfacet {
 
 #pragma region MicrofacetDistribution
 
-    __device__ float D_Anisotropic(glm::vec3 wm, glm::vec2 alpha) {
+    __device__ __host__ float D_Anisotropic(glm::vec3 wm, glm::vec2 alpha) {
         float tan2Theta = SpherGeom::Tan2Theta(wm);
         if (isinf(tan2Theta)) return 0;
 
@@ -19,7 +19,7 @@ namespace PBRT { namespace Microfacet {
         return 1 / (pi * alpha.x * alpha.y * cos4Theta * Sqr(1 + e));
     }
 
-    __device__ float D_Isotropic(glm::vec3 wm, float alpha) {
+    __device__ __host__ float D_Isotropic(glm::vec3 wm, float alpha) {
         // Gather main ingredients
         const float cos2Theta = SpherGeom::Cos2Theta(wm);
         const float tan2Theta = SpherGeom::Tan2Theta(wm);
@@ -41,7 +41,7 @@ namespace PBRT { namespace Microfacet {
 
 #pragma region MaskingShadowingFunctions
 
-    __device__ float Lambda_Isotropic(glm::vec3 w, float alpha) {
+    __device__ __host__ float Lambda_Isotropic(glm::vec3 w, float alpha) {
         float tan2Theta = SpherGeom::Tan2Theta(w);
         if (isinf(tan2Theta)) return 0;
 
@@ -49,25 +49,25 @@ namespace PBRT { namespace Microfacet {
         return (std::sqrt(1 + alpha2 * tan2Theta) - 1) / 2;
     }
 
-    __device__ float G_Isotropic(glm::vec3 wo, glm::vec3 wi, float alpha) {
+    __device__ __host__ float G_Isotropic(glm::vec3 wo, glm::vec3 wi, float alpha) {
         return 1 / (1 + Lambda_Isotropic(wo, alpha) + Lambda_Isotropic(wi, alpha));
     }
 
-    __device__ float G1_Isotropic(glm::vec3 w, float alpha) {
+    __device__ __host__ float G1_Isotropic(glm::vec3 w, float alpha) {
         return 1 / (1 + Lambda_Isotropic(w, alpha));
     }
 
 #pragma endregion
 
-    __device__ float D_Isotropic(glm::vec3 w, glm::vec3 wm, float alpha) {
+    __device__ __host__ float D_Isotropic(glm::vec3 w, glm::vec3 wm, float alpha) {
         return G1_Isotropic(w, alpha) / SpherGeom::AbsCosTheta(w) * D_Isotropic(wm, alpha) * AbsDot(w, wm);
     }
 
-    __device__ float PDF_Isotropic(glm::vec3 w, glm::vec3 wm, float alpha) {
+    __device__ __host__ float PDF_Isotropic(glm::vec3 w, glm::vec3 wm, float alpha) {
         return D_Isotropic(w, wm, alpha);
     }
 
-    __device__ glm::vec3 Sample_wm(unsigned int& randomSeed, glm::vec3 w, float alpha) {
+    __device__ __host__ glm::vec3 Sample_wm(unsigned int& randomSeed, glm::vec3 w, float alpha) {
         //<< Transform w to hemispherical configuration >>
         glm::vec3 wh = glm::normalize(glm::vec3(alpha * w.x, alpha * w.y, w.z));
         if (wh.z < 0.0f)

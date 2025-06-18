@@ -20785,7 +20785,7 @@ $L__func_begin165:
 	st.u32 	[%SP+4], %r2;
 	st.u32 	[%SP+0], %r1;
 $L__tmp771:
-	.loc	43 8 38
+	.loc	43 8 59
 	ld.f32 	%f1, [%SP+8];
 	mov.f32 	%f2, %f1;
 	st.param.f32 	[func_retval0+0], %f2;
@@ -20818,7 +20818,7 @@ $L__func_begin166:
 	st.u32 	[%SP+4], %r2;
 	st.u32 	[%SP+0], %r1;
 $L__tmp773:
-	.loc	43 9 38
+	.loc	43 9 59
 	ld.f32 	%f1, [%SP+8];
 	ld.f32 	%f2, [%SP+8];
 	mul.f32 	%f3, %f1, %f2;
@@ -20852,7 +20852,7 @@ $L__func_begin167:
 	st.u32 	[%SP+4], %r2;
 	st.u32 	[%SP+0], %r1;
 $L__tmp775:
-	.loc	43 10 38
+	.loc	43 10 59
 	ld.f32 	%f1, [%SP+8];
 	{ // callseq 563, 0
 	.reg .b32 temp_param_reg;
@@ -20896,7 +20896,7 @@ $L__func_begin168:
 	st.u32 	[%SP+4], %r2;
 	st.u32 	[%SP+0], %r1;
 $L__tmp777:
-	.loc	43 12 38
+	.loc	43 12 59
 	ld.u32 	%r4, [%SP+8];
 	ld.u32 	%r5, [%SP+4];
 	ld.u32 	%r6, [%SP+0];
@@ -20961,7 +20961,7 @@ $L__func_begin169:
 	st.u32 	[%SP+4], %r2;
 	st.u32 	[%SP+0], %r1;
 $L__tmp779:
-	.loc	43 13 38
+	.loc	43 13 59
 	ld.u32 	%r4, [%SP+8];
 	ld.u32 	%r5, [%SP+4];
 	ld.u32 	%r6, [%SP+0];
@@ -21021,7 +21021,7 @@ $L__func_begin170:
 	st.u32 	[%SP+4], %r2;
 	st.u32 	[%SP+0], %r1;
 $L__tmp781:
-	.loc	43 15 38
+	.loc	43 15 59
 	ld.u32 	%r4, [%SP+8];
 	ld.u32 	%r5, [%SP+4];
 	ld.u32 	%r6, [%SP+0];
@@ -21087,7 +21087,7 @@ $L__func_begin171:
 	st.u32 	[%SP+4], %r2;
 	st.u32 	[%SP+0], %r1;
 $L__tmp783:
-	.loc	43 16 38
+	.loc	43 16 59
 	ld.u32 	%r4, [%SP+8];
 	ld.u32 	%r5, [%SP+4];
 	ld.u32 	%r6, [%SP+0];

@@ -73,7 +73,7 @@ namespace RandomOptix {
         return seed ^ frame;
     }
 
-    static __device__ glm::vec2 SampleUniformDiskPolar(unsigned int& prev) {
+    static __device__ __host__ glm::vec2 SampleUniformDiskPolar(unsigned int& prev) {
         const float pi = 3.14159265359;
 
         glm::vec2 u = glm::vec2(rnd(prev), rnd(prev));
