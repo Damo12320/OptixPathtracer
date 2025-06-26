@@ -8,12 +8,29 @@ out vec4 color;
 
 vec3 AgX_DS(vec3 color_srgb, float exposure, float saturation, float linear, float peak, float compression);
 
+//PBRT: Images Chapter(https://pbr-book.org/4ed/Utilities/Images)
+vec3 LinearToSRGB8(vec3 color)
+{
+    vec3 mixAmount = step(0.0031308, color);
+
+    return mix(vec3(12.92) * color, vec3(1.055) * pow(color, vec3(1.0/2.4)) - vec3(0.055), mixAmount);
+}
+
 void main() 
 {
     vec3 finalColor = texture(image, uv).rgb;
 
-    finalColor = AgX_DS(finalColor, 0.45, 1.06, 0.18, 1.0, 0.1);//Settings taken from IDKEngine (VoxelConeTracing)
-    finalColor = clamp(finalColor, vec3(0.0), vec3(1.0));
+    //finalColor = AgX_DS(finalColor, 0.45, 1.06, 0.18, 1.0, 0.1);//Settings taken from IDKEngine (VoxelConeTracing)
+    //finalColor = clamp(finalColor, vec3(0.0), vec3(1.0));
+
+    //float exposure = 1.0;
+    //finalColor = vec3(1.0)- exp(-finalColor * exposure);
+
+    //https://learnopengl.com/Advanced-Lighting/Gamma-Correction
+    //float gamma = 2.2;
+    //finalColor = pow(finalColor, vec3(1.0/gamma));
+
+    finalColor = LinearToSRGB8(finalColor);
 
 	color = vec4(finalColor, 1.0);
 }

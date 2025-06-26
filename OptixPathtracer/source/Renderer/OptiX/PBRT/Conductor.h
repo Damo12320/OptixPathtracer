@@ -2,6 +2,7 @@
 
 #include "Microfacet.h"
 #include "../Surface.h"
+#include "BSDFSample.h"
 //#include "../RayData.h"
 
 namespace PBRT {
@@ -61,17 +62,21 @@ namespace PBRT {
                 (4 * cosTheta_i * cosTheta_o);
         }
 
-		__device__ __host__ bool Sample_f(unsigned int& randomSeed, Surface& surface, glm::vec3& wi, float& pdf, glm::vec3& sample) {
+
+
+
+
+		__device__ __host__ bool Sample_f(unsigned int& randomSeed, Surface& surface, BSDFSample& sample) {
             const glm::vec3 specularColor = glm::vec3(1);//white -> physically correct/ no influence
             
             //if (!(sampleFlags & BxDFReflTransFlags::Reflection)) return {};
             if (surface.IsEffectifvelySmooth()) {
-                wi = glm::vec3(-surface.outgoingRay.x, -surface.outgoingRay.y, surface.outgoingRay.z);
+                sample.direction = glm::vec3(-surface.outgoingRay.x, -surface.outgoingRay.y, surface.outgoingRay.z);
                 //glm::vec3 wi(surface.outgoingRay.x, surface.outgoingRay.y, -surface.outgoingRay.z);
 
-                sample = Fresnel82(specularColor, surface.albedo, SpherGeom::AbsCosTheta(wi)) / SpherGeom::AbsCosTheta(wi);
+                sample.color = Fresnel82(specularColor, surface.albedo, SpherGeom::AbsCosTheta(sample.direction)) / SpherGeom::AbsCosTheta(sample.direction);
                 //SampledSpectrum f = FrComplex(AbsCosTheta(wi), eta, k) / AbsCosTheta(wi);
-                pdf = 1.0f;
+                sample.pdf = 1.0f;
                 return true;
                 //return BSDFSample(f, wi, 1, BxDFFlags::SpecularReflection);
             }
@@ -84,7 +89,7 @@ namespace PBRT {
                 wm = -wm;
             }*/
 
-            wi = glm::reflect(-surface.outgoingRay, wm);
+            sample.direction = glm::reflect(-surface.outgoingRay, wm);
             //wi = -surface.outgoingRay + 2 * glm::dot(surface.outgoingRay, wm) * wm;
 
             //wi = glm::normalize(wi);
@@ -116,24 +121,24 @@ namespace PBRT {
                 wi = -wi;
             }*/
 
-            if (!SpherGeom::SameHemisphere(surface.outgoingRay, wi)) {
+            if (!SpherGeom::SameHemisphere(surface.outgoingRay, sample.direction)) {
                 return false;
             }
 
             //<< Compute PDF of wi for microfacet reflection >>
-            pdf = Microfacet::PDF_Isotropic(surface.outgoingRay, wm, alpha) / (4 * AbsDot(surface.outgoingRay, wm));
+            sample.pdf = Microfacet::PDF_Isotropic(surface.outgoingRay, wm, alpha) / (4 * AbsDot(surface.outgoingRay, wm));
 
             float cosTheta_o = SpherGeom::AbsCosTheta(surface.outgoingRay);
-            float cosTheta_i = SpherGeom::AbsCosTheta(wi);
+            float cosTheta_i = SpherGeom::AbsCosTheta(sample.direction);
 
             //Fresnel
             //SampledSpectrum F = FrComplex(AbsDot(wo, wm), eta, k);
             glm::vec3 F = Fresnel82(specularColor, surface.albedo, AbsDot(surface.outgoingRay, wm));
 
-            glm::vec3 f = Microfacet::D_Isotropic(wm, alpha) * F * Microfacet::G_Isotropic(surface.outgoingRay, wi, alpha) / (4 * cosTheta_i * cosTheta_o);
+            glm::vec3 f = Microfacet::D_Isotropic(wm, alpha) * F * Microfacet::G_Isotropic(surface.outgoingRay, sample.direction, alpha) / (4 * cosTheta_i * cosTheta_o);
             //return BSDFSample(f, wi, pdf, BxDFFlags::GlossyReflection);
 
-            sample = f;
+            sample.color = f;
 
             return true;
 		}

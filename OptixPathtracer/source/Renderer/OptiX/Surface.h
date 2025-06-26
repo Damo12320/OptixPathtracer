@@ -23,7 +23,17 @@ struct Surface {
         return r < 0.0001;
     }
 
+    __device__ __host__ static float GetAlpha(float roughness) {
+        //return Sqr(roughness);
+        return sqrt(roughness);
+    }
+
     __device__ __host__ bool IsEffectifvelySmooth() {
         return IsEffectifvelySmooth(this->roughness);
+    }
+
+    __device__ __host__ float GetAlpha() {
+        //return Sqr(this->roughness);
+        return sqrt(this->roughness);
     }
 };

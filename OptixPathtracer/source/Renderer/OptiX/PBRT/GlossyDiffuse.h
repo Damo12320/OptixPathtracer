@@ -80,9 +80,9 @@ namespace PBRT {
             return HenyeyGreenstein(glm::dot(wo, wi), g);
         }
 
-        __device__ __host__ float PDF(glm::vec3 wo, glm::vec3 wi, float g) {
+        /*__device__ __host__ float Phase_PDF(glm::vec3 wo, glm::vec3 wi, float g) {
             return PhaseFunction_p(wo, wi, g);
-        }
+        }*/
 
 #pragma endregion
 
@@ -116,8 +116,10 @@ namespace PBRT {
 
         __device__ __host__ glm::vec3 f(unsigned int& randomSeed, Surface& surface, glm::vec3 wi) {
             const int nSamples = 5;
-            const float thickness = 0.0001f;
-            const int maxDepth = 5;
+            const float thickness = 0.01f;
+            const int maxDepth = 10;
+
+            const glm::vec3 mediaAlbedo = glm::vec3(0);//Color of the participating medium between the two layers
 
             //scattering of light (0 = isotropic)
             const float g = 0;
@@ -125,12 +127,52 @@ namespace PBRT {
             glm::vec3 wo = surface.outgoingRay;
 
             glm::vec3 f(0.);
+
+            //enter interface => Dielectric
+            auto enterInterface_f = [](float roughness, glm::vec3 wo, glm::vec3 wi) {
+                return Dielectric::f(roughness, wo, wi);
+                };
+
+            auto enterInterface_Sample_f = [](unsigned int& randomSeed, float roughness, glm::vec3 wo, BSDFSample& sample, bool reflection = true, bool transmission = true) {
+                return Dielectric::Sample_f(randomSeed, roughness, wo, sample);
+                };
+
+            /*auto enterInterface_PDF = [](float roughness, glm::vec3 wo, glm::vec3 wi) {
+                return Dielectric::PDF(roughness, wo, wi);
+                };*/
+
+            //exitInterface => Same as enter interface (everything is opaque)
+            auto exitInterface_f = [](float roughness, glm::vec3 wo, glm::vec3 wi) {
+                return Dielectric::f(roughness, wo, wi);
+                };
+
+            auto exitInterface_Sample_f = [](unsigned int& randomSeed, float roughness, glm::vec3 wo, BSDFSample& sample, bool reflection = true, bool transmission = true) {
+                return Dielectric::Sample_f(randomSeed, roughness, wo, sample);
+                };
+
+            /*auto exitInterface_PDF = [](float roughness, glm::vec3 wo, glm::vec3 wi) {
+                return Dielectric::PDF(roughness, wo, wi);
+                };*/
+
+            //non exit interface => Diffuse
+            auto nonExitInterface_f = [](float roughness, glm::vec3 surfaceColor, glm::vec3 wo, glm::vec3 wi) {
+                return LambertDiffuse::f(roughness, surfaceColor, wo, wi);
+                };
+
+            auto nonExitInterface_Sample_f = [](unsigned int& randomSeed, glm::vec3 surfaceColor, float roughness, glm::vec3 wo, BSDFSample& sample) {
+                return LambertDiffuse::Sample_f(randomSeed, surfaceColor, roughness, wo, sample);
+                };
+
+            auto nonExitInterface_PDF = [](glm::vec3 wo, glm::vec3 wi) {
+                return LambertDiffuse::PDF(wo, wi);
+                };
+
             // Estimate _LayeredBxDF_ value _f_ using random sampling
             // Set _wo_ and _wi_ for layered BSDF evaluation
-            /*if (twoSided && wo.z < 0) {
+            /*if (twoSided&& wo.z < 0) {
                 wo = -wo;
                 wi = -wi;
-            }*/ //ONLY ONE SIDED
+            }*/
 
             // Determine entrance interface for layered BSDF
             /*TopOrBottomBxDF<TopBxDF, BottomBxDF> enterInterface;
@@ -150,12 +192,12 @@ namespace PBRT {
                 exitInterface = &top;
                 nonExitInterface = &bottom;
             }*/
-            float exitZ = (SpherGeom::SameHemisphere(wo, wi) ^ true) ? 0 : thickness;
+            //float exitZ = (SpherGeom::SameHemisphere(wo, wi) ^ enteredTop) ? 0 : thickness;
+            float exitZ = thickness;
 
             // Account for reflection at the entrance interface
             if (SpherGeom::SameHemisphere(wo, wi))
-                f = (float)nSamples * Dielectric::f(surface.roughness, surface.outgoingRay, wi);
-                //f = nSamples * enterInterface.f(wo, wi, mode);
+                f = (float)nSamples * enterInterface_f(surface.roughness, wo, wi);
 
             // Declare _RNG_ for layered BSDF evaluation
             /*RNG rng(Hash(GetOptions().seed, wo), Hash(wi));
@@ -170,34 +212,25 @@ namespace PBRT {
             for (int s = 0; s < nSamples; ++s) {
                 // Sample random walk through layers to estimate BSDF value
                 // Sample transmission direction through entrance interface
-                //float uc = r();
-
+                float uc = r();
                 BSDFSample wos;
-                bool wos_test = Dielectric::Sample_f(randomSeed, surface.roughness, surface.outgoingRay, wos);
+                //pstd::optional<BSDFSample> wos = enterInterface.Sample_f(wo, uc, Point2f(r(), r()), mode, BxDFReflTransFlags::Transmission);
+                bool wos_test = enterInterface_Sample_f(randomSeed, surface.roughness, wo, wos, false, true);
                 if (!wos_test || wos.color == glm::vec3(0) || wos.pdf == 0 || wos.direction.z == 0)
                     continue;
 
-                /*pstd::optional<BSDFSample> wos = enterInterface.Sample_f(
-                    wo, uc, Point2f(r(), r()), mode, BxDFReflTransFlags::Transmission);
-                if (!wos || !wos->f || wos->pdf == 0 || wos->wi.z == 0)
-                    continue;*/
-
                 // Sample BSDF for virtual light from _wi_
-
+                uc = r();
                 BSDFSample wis;
-                bool wis_test = LambertDiffuse::Sample_f(randomSeed, surface.albedo, surface.roughness, surface.outgoingRay, wis);
+                //pstd::optional<BSDFSample> wis = exitInterface.Sample_f(wi, uc, Point2f(r(), r()), !mode, BxDFReflTransFlags::Transmission);
+                bool wis_test = exitInterface_Sample_f(randomSeed, surface.roughness, wi, wis, false, true);
                 if (!wis_test || wis.color == glm::vec3(0) || wis.pdf == 0 || wis.direction.z == 0)
                     continue;
 
-                /*uc = r();
-                pstd::optional<BSDFSample> wis = exitInterface.Sample_f(
-                    wi, uc, Point2f(r(), r()), !mode, BxDFReflTransFlags::Transmission);
-                if (!wis || !wis->f || wis->pdf == 0 || wis->wi.z == 0)
-                    continue;*/
-
                 // Declare state for random walk through BSDF layers
                 glm::vec3 beta = wos.color * SpherGeom::AbsCosTheta(wos.direction) / wos.pdf;
-                float z = true ? thickness : 0;//enteredTop ?
+                //float z = enteredTop ? thickness : 0;
+                float z = thickness;
                 glm::vec3 w = wos.direction;
                 //HGPhaseFunction phase(g);
 
@@ -208,7 +241,7 @@ namespace PBRT {
                         f[3]);*/
                     // Possibly terminate layered BSDF random walk with Russian roulette
                     if (depth > 3 && SaveMax(beta) < 0.25f) {
-                        float q = glm::max(0.0f, 1.0f - SaveMax(beta));
+                        float q = std::max<float>(0, 1 - SaveMax(beta));
                         if (r() < q)
                             break;
                         beta /= 1 - q;
@@ -217,7 +250,7 @@ namespace PBRT {
                     }
 
                     // Account for media between layers and possibly scatter
-                    if (surface.albedo == glm::vec3(0)) {
+                    if (mediaAlbedo == glm::vec3(0)) {
                         // Advance to next layer boundary and update _beta_ for transmittance
                         z = (z == thickness) ? 0 : thickness;
                         beta *= Transmittance(thickness, w);
@@ -232,37 +265,36 @@ namespace PBRT {
                         //DCHECK_RARE(1e-5, z == zp);
                         if (z == zp)
                             continue;
-
                         if (0 < zp && zp < thickness) {
                             // Handle scattering event in layered BSDF medium
                             // Account for scattering through _exitInterface_ using _wis_
                             float wt = 1;
-                            //if (!IsSpecular(exitInterface.Flags()))
+                            //if (!IsSpecular(exitInterface.Flags()))//!IsSpecular(exitInterface.Flags())
                                 //wt = PowerHeuristic(1, wis->pdf, 1, phase.PDF(-w, -wis->wi));
-                            f += beta * surface.albedo * PhaseFunction_p(-w, -wis.direction, g) * wt *
+                            f += beta * mediaAlbedo * PhaseFunction_p(-w, -wis.direction, g) * wt *
                                 Transmittance(zp - exitZ, wis.direction) * wis.color / wis.pdf;
 
                             // Sample phase function and update layered path state
                             glm::vec2 u{ r(), r() };
+                            //pstd::optional<PhaseFunctionSample> ps = phase.Sample_p(-w, u);
                             PhaseFunctionSample ps = PhaseFunction_Sample_p(-w, u, g);
                             if (ps.pdf == 0 || ps.wi.z == 0)
                                 continue;
-                            beta *= surface.albedo * ps.p / ps.pdf;
+                            beta *= mediaAlbedo * ps.p / ps.pdf;
                             w = ps.wi;
                             z = zp;
 
                             // Possibly account for scattering through _exitInterface_
-                            if ((z < exitZ && w.z > 0) || (z > exitZ && w.z < 0)) {//&& !IsSpecular(exitInterface.Flags())
-                                // Account for scattering through _exitInterface_
-                                //glm::vec3 fExit = LambertDiffuse::f(-w, wi);
-                                glm::vec3 fExit = LambertDiffuse::f(surface.roughness, surface.albedo, -w, wi);
-                                if (fExit != glm::vec3(0)) {
-                                    //float exitPDF = LambertDiffuse::PDF(-w, wi, mode, BxDFReflTransFlags::Transmission);
-                                    float exitPDF = LambertDiffuse::PDF(-w, wi);
-                                    float wt = PowerHeuristic(1, ps.pdf, 1, exitPDF);
-                                    f += beta * Transmittance(zp - exitZ, ps.wi) * fExit * wt;
-                                }
-                            }
+                            //if (((z < exitZ && w.z > 0) || (z > exitZ && w.z < 0)) && !IsSpecular(exitInterface.Flags())) {
+                            //    // Account for scattering through _exitInterface_
+                            //    SampledSpectrum fExit = exitInterface.f(-w, wi, mode);
+                            //    if (fExit) {
+                            //        float exitPDF = exitInterface.PDF(
+                            //            -w, wi, mode, BxDFReflTransFlags::Transmission);
+                            //        float wt = PowerHeuristic(1, ps->pdf, 1, exitPDF);
+                            //        f += beta * Tr(zp - exitZ, ps->wi) * fExit * wt;
+                            //    }
+                            //}
 
                             continue;
                         }
@@ -272,56 +304,54 @@ namespace PBRT {
                     // Account for scattering at appropriate interface
                     if (z == exitZ) {
                         // Account for reflection at _exitInterface_
-                        //float uc = r();
-                        //pstd::optional<BSDFSample> bs = LambertDiffuse::Sample_f( -w, uc, Point2f(r(), r()), mode, BxDFReflTransFlags::Reflection);
-                        //pstd::optional<BSDFSample> bs = LambertDiffuse::Sample_f( -w, uc, Point2f(r(), r()), mode, BxDFReflTransFlags::Reflection);
-
+                        float uc = r();
+                        //pstd::optional<BSDFSample> bs = exitInterface.Sample_f(-w, uc, Point2f(r(), r()), mode, BxDFReflTransFlags::Reflection);
                         BSDFSample bs;
-                        bool bs_test = LambertDiffuse::Sample_f(randomSeed, surface.albedo, surface.roughness, -w, bs);
+                        bool bs_test = exitInterface_Sample_f(randomSeed, surface.roughness, -w, bs, true, false);
                         if (!bs_test || bs.color == glm::vec3(0) || bs.pdf == 0 || bs.direction.z == 0)
                             break;
+
                         beta *= bs.color * SpherGeom::AbsCosTheta(bs.direction) / bs.pdf;
                         w = bs.direction;
 
                     }
                     else {
                         // Account for scattering at _nonExitInterface_
-                        if (!surface.IsEffectifvelySmooth()) {//!IsSpecular(nonExitInterface.Flags())
+                        if (true) {//!IsSpecular(nonExitInterface.Flags())
                             // Add NEE contribution along presampled _wis_ direction
                             float wt = 1;
+                            //exitInterface(Dielectric) is specular
                             //if (!IsSpecular(exitInterface.Flags()))
                                 //wt = PowerHeuristic(1, wis->pdf, 1, nonExitInterface.PDF(-w, -wis->wi, mode));
-                            wt = PowerHeuristic(1, wis.pdf, 1, Dielectric::PDF(surface.roughness, -w, -wis.direction));
-
-                            f += beta * Dielectric::f(surface.roughness, -w, -wis.direction) *
-                                SpherGeom::AbsCosTheta(wis.direction) * wt * Transmittance(thickness, wis.direction) * wis.color / wis.pdf;
+                            f += beta * nonExitInterface_f(surface.roughness, surface.albedo, -w, -wis.direction) *
+                                SpherGeom::AbsCosTheta(wis.direction) * wt * Transmittance(thickness, wis.direction) * wis.color /
+                                wis.pdf;
                         }
                         // Sample new direction using BSDF at _nonExitInterface_
-                        //float uc = r();
+                        float uc = r();
                         //Point2f u(r(), r());
                         //pstd::optional<BSDFSample> bs = nonExitInterface.Sample_f(-w, uc, u, mode, BxDFReflTransFlags::Reflection);
-
                         BSDFSample bs;
-                        bool bs_test = Dielectric::Sample_f(randomSeed, surface.roughness, -w, bs);
+                        bool bs_test = nonExitInterface_Sample_f(randomSeed, surface.albedo, surface.roughness, -w, bs);
                         if (!bs_test || bs.color == glm::vec3(0) || bs.pdf == 0 || bs.direction.z == 0)
                             break;
                         beta *= bs.color * SpherGeom::AbsCosTheta(bs.direction) / bs.pdf;
                         w = bs.direction;
 
-                        if (true) {//!IsSpecular(exitInterface.Flags())
-                            // Add NEE contribution along direction from BSDF sample
-                            //glm::vec3 fExit = exitInterface.f(-w, wi, mode);
-                            glm::vec3 fExit = LambertDiffuse::f(surface.roughness, surface.albedo, -w, wi);
-                            if (fExit != glm::vec3(0)) {
-                                float wt = 1;
-                                if (!surface.IsEffectifvelySmooth()) {//!IsSpecular(nonExitInterface.Flags())
-                                    //float exitPDF = exitInterface.PDF( -w, wi, mode, BxDFReflTransFlags::Transmission);
-                                    float exitPDF = LambertDiffuse::PDF(-w, wi);
-                                    wt = PowerHeuristic(1, bs.pdf, 1, exitPDF);
-                                }
-                                f += beta * Transmittance(thickness, bs.direction) * fExit * wt;
-                            }
-                        }
+                        //exitInterface(Dielectric) is specular
+                        //if (!IsSpecular(exitInterface.Flags())) {
+                        //    // Add NEE contribution along direction from BSDF sample
+                        //    SampledSpectrum fExit = exitInterface.f(-w, wi, mode);
+                        //    if (fExit) {
+                        //        float wt = 1;
+                        //        if (!IsSpecular(nonExitInterface.Flags())) {
+                        //            float exitPDF = exitInterface.PDF(
+                        //                -w, wi, mode, BxDFReflTransFlags::Transmission);
+                        //            wt = PowerHeuristic(1, bs->pdf, 1, exitPDF);
+                        //        }
+                        //        f += beta * Tr(thickness, bs->wi) * fExit * wt;
+                        //    }
+                        //}
                     }
                 }
             }
@@ -344,9 +374,8 @@ namespace PBRT {
 
 
         __device__ __host__ bool Sample_f(unsigned int& randomSeed, Surface& surface, BSDFSample& sample) {
-            const int nSamples = 5;
-            const float thickness = 0.0001f;
-            const int maxDepth = 5;
+            const float thickness = 0.01f;
+            const int maxDepth = 10;
 
             //scattering of light (0 = isotropic)
             const float g = 0;
