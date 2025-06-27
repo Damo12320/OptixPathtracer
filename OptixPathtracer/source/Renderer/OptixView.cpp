@@ -162,7 +162,8 @@ void OptixView::Run() {
 		}
 		else if (this->samples == this->maxSamples + 1) {
 			std::cout << "Render is finished" << std::endl;
-			WriteImage::WriteTextureToBMP(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.bmp");
+			//WriteImage::WriteTextureToBMP(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.bmp");
+			WriteImage::WriteTextureToEXR(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.exr");
 			this->samples++;
 		}
 
