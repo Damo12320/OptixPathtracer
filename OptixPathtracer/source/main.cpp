@@ -6,7 +6,7 @@
 int main()
 {
     //World Coordinate System: x = out of the mnonitor, y = up, z = left
-    const int maxSamples = -1;
+    const int maxSamples = 100;
     const int maxBounces = 3;//more as "max Collisions per path"
 
     //std::string modelPath{ "assets/Models/Sponza/" };

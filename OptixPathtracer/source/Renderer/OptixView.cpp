@@ -1,5 +1,6 @@
 #include "OptixView.h"
 #include <iostream>
+#include "Images/WriteImage.h"
 
 #pragma region GLFW_Callbacks
 static void OnWindowResize(GLFWwindow* window, int width, int height) {
@@ -161,6 +162,7 @@ void OptixView::Run() {
 		}
 		else if (this->samples == this->maxSamples + 1) {
 			std::cout << "Render is finished" << std::endl;
+			WriteImage::WriteTextureToBMP(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.bmp");
 			this->samples++;
 		}
 

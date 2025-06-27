@@ -43,6 +43,8 @@ GLTexture2D::GLTexture2D(glm::ivec2 size, int sizedInternalFormat, int mipMapLev
 
 	this->width = size.x;
 	this->height = size.y;
+	this->sizedInternalFormat = sizedInternalFormat;
+	this->mipMapLevels = mipMapLevels;
 }
 
 
@@ -67,4 +69,12 @@ void GLTexture2D::SetData(glm::vec3 pixels[], glm::ivec2 size) {
 	this->height = size.y;
 
 	glTextureSubImage2D(this->ID, 0, 0, 0, size.x, size.y, GL_RGB, GL_FLOAT, pixels);
+}
+
+void GLTexture2D::DownloadTexture(std::vector<glm::vec3>& pixels) {
+	pixels.resize(this->width * this->height);
+
+	GLsizei buffSize = static_cast<GLsizei>(pixels.size() * sizeof(glm::vec3));
+	//glGetTextureSubImage(texture, level, xoffset, yoffset, zoffset, width, height, depth, format, type, bufSize, *pixels)
+	glGetTextureSubImage(this->ID, 0, 0, 0, 0, this->width, this->height, 1, GL_RGB, GL_FLOAT, buffSize, pixels.data());
 }

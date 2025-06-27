@@ -303,9 +303,9 @@ __device__ bool GetNewRayDirection(unsigned int& seed, Surface& surface, BSDFSam
         return true;
     }*/
 
-    bool test = PBRT::Dielectric::Sample_f(seed, surface.roughness, surface.outgoingRay, bsdfSample);
+    //bool test = PBRT::Dielectric::Sample_f(seed, surface.roughness, surface.outgoingRay, bsdfSample);
     //bool test = PBRT::GlossyDiffuse::Sample_f(seed, surface, bsdfSample);
-    //bool test = PBRT::LambertDiffuse::Sample_f(seed, surface.albedo, surface.roughness, surface.outgoingRay, bsdfSample);
+    bool test = PBRT::LambertDiffuse::Sample_f(seed, surface.albedo, surface.roughness, surface.outgoingRay, bsdfSample);
     //bool test = PBRT::Conductor::Sample_f(seed, surface, bsdfSample);
     return test;
 
@@ -342,9 +342,9 @@ __device__ bool GetNewRayDirection(unsigned int& seed, Surface& surface, BSDFSam
 __device__ glm::vec3 BRDF(unsigned int& seed, Surface& surface, const glm::vec3 incommingRay) {
 
     //return glm::vec3(0.1f);
-    return PBRT::Dielectric::f(surface.roughness, surface.outgoingRay, incommingRay);
+    //return PBRT::Dielectric::f(surface.roughness, surface.outgoingRay, incommingRay);
     //return PBRT::GlossyDiffuse::f(seed, surface, incommingRay);
-    //return PBRT::LambertDiffuse::f(surface.roughness, surface.albedo, surface.outgoingRay, incommingRay);
+    return PBRT::LambertDiffuse::f(surface.roughness, surface.albedo, surface.outgoingRay, incommingRay);
     //return PBRT::Conductor::f(surface, incommingRay);
 
     //if (surface.conductor) {
