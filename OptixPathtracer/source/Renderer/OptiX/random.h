@@ -78,8 +78,8 @@ namespace RandomOptix {
 
         glm::vec2 u = glm::vec2(rnd(prev), rnd(prev));
 
-        float r = std::sqrt(u.x);
-        float theta = 2 * pi * u.y;
-        return { r * std::cos(theta), r * std::sin(theta) };
+        float r = glm::sqrt(u.x);
+        float theta = 2.0f * pi * u.y;
+        return { r * glm::cos(theta), r * glm::sin(theta) };
     }
 }

@@ -146,6 +146,9 @@
     <ClInclude Include="source\Renderer\Images\WriteImage.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="source\Renderer\OptiX\PBRT\Complex.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\Users\damia\Desktop\IDK-Engine\IDKEngine\Resource\Final Scenes Lights\3\untitled.bin">

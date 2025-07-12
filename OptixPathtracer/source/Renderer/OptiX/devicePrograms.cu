@@ -210,7 +210,7 @@ __device__ float LightVisibility(glm::vec3 pointLightPos, glm::vec3 surfPos, glm
     glm::vec3 lightDir = pointLightPos - surfPos;
     lightDirection = glm::normalize(lightDir);
 
-    float lightVisibility = 0;
+    float lightVisibility = 0.0f;
     // the values we store the PRD pointer in:
     uint32_t u0, u1;
     packPointer(&lightVisibility, u0, u1);
@@ -294,24 +294,15 @@ __device__ glm::vec3 RandomHemisphereDirection(unsigned int& seed, const glm::ve
 #pragma endregion
 
 __device__ bool GetNewRayDirection(unsigned int& seed, Surface& surface, BSDFSample& bsdfSample) {
-    //const float pdfRandomHemisphere = 1 / (2 * 3.141592654f);//https://ameye.dev/notes/sampling-the-hemisphere/
-
-    /*if (surface.IsEffectifvelySmooth()) {
-        sample = glm::vec3(0);
-        pdf = 1;
-        newDirection = glm::refract(surface.outgoingRay, glm::vec3(0, 0, 1), 1.5f);
-        return true;
-    }*/
-
-    //bool test = PBRT::Dielectric::Sample_f(seed, surface.roughness, surface.outgoingRay, bsdfSample);
+    //bool test = PBRT::Dielectric::Sample_f(seed, surface, surface.outgoingRay, bsdfSample, PBRT::Dielectric::TransportMode::Radiance, true, true);
     //bool test = PBRT::GlossyDiffuse::Sample_f(seed, surface, bsdfSample);
-    bool test = PBRT::LambertDiffuse::Sample_f(seed, surface.albedo, surface.roughness, surface.outgoingRay, bsdfSample);
-    //bool test = PBRT::Conductor::Sample_f(seed, surface, bsdfSample);
+    //bool test = PBRT::LambertDiffuse::Sample_f(seed, surface, surface.outgoingRay, bsdfSample, true);
+    bool test = PBRT::Conductor::Sample_f(seed, surface.albedo, surface.roughness, surface.outgoingRay, bsdfSample);
     return test;
 
     //if (surface.conductor) {
     //
-    //    return PBRT::Conductor::Sample_f(seed, surface, newDirection, pdf, sample);
+    //    return PBRT::Conductor::Sample_f(seed, surface, bsdfSample);
     //}
     //else {
     //    /*pdf = pdfRandomHemisphere;
@@ -327,25 +318,19 @@ __device__ bool GetNewRayDirection(unsigned int& seed, Surface& surface, BSDFSam
     //    sample *= surface.albedo;
     //    return test;*/
     //
-    //    BSDFSample bsdfSample;
     //    bool test = PBRT::GlossyDiffuse::Sample_f(seed, surface, bsdfSample);
-    //    sample = bsdfSample.color;
-    //    pdf = bsdfSample.pdf;
-    //    newDirection = bsdfSample.direction;
     //
     //    return test;
     //}
 
-    return true;
+    //return true;
 }
 
 __device__ glm::vec3 BRDF(unsigned int& seed, Surface& surface, const glm::vec3 incommingRay) {
-
-    //return glm::vec3(0.1f);
-    //return PBRT::Dielectric::f(surface.roughness, surface.outgoingRay, incommingRay);
+    //return PBRT::Dielectric::f(surface, surface.outgoingRay, incommingRay, PBRT::Dielectric::TransportMode::Radiance);
     //return PBRT::GlossyDiffuse::f(seed, surface, incommingRay);
-    return PBRT::LambertDiffuse::f(surface.roughness, surface.albedo, surface.outgoingRay, incommingRay);
-    //return PBRT::Conductor::f(surface, incommingRay);
+    //return PBRT::LambertDiffuse::f(surface, surface.outgoingRay, incommingRay);
+    return PBRT::Conductor::f(surface.albedo, surface.roughness, surface.outgoingRay, incommingRay);
 
     //if (surface.conductor) {
     //    return PBRT::Conductor::f(surface, incommingRay);
@@ -380,6 +365,7 @@ extern "C" __global__ void __closesthit__radiance()
     //Return if maximum depth is reached
     rayData->bounceCounter++;
     if (rayData->bounceCounter > rayData->maxBounces) {
+        rayData->endPath = true;
         return;
     }
 
@@ -434,10 +420,14 @@ extern "C" __global__ void __closesthit__radiance()
 
     //Transform everything to local Shading Coordinate System
     surface.outgoingRay = surface.WorldToShading * surface.outgoingRay;
-    surface.sNormal = surface.WorldToShading * surface.sNormal;//sanity check
+    //surface.sNormal = surface.WorldToShading * surface.sNormal;//sanity check
     //if (surface.sNormal != glm::vec3(0, 0, 1)) {
     //    Print("Normal: ", surface.sNormal);
     //}
+
+    /*if (surface.albedo == glm::vec3(1)) {
+        surface.roughness = 0.99f;
+    }*/
 
     //------------------------------------------------------------------------------------------
 
@@ -463,26 +453,28 @@ extern "C" __global__ void __closesthit__radiance()
         const float lightVisibility = LightVisibility(pointLight->position, surface.position, surface.gNormal, lightDirection);
         lightDirection = surface.WorldToShading * lightDirection;
 
-        if (lightVisibility > 0.0f) {
-            glm::vec3 spectrum = (BRDF(rayData->randomSeed, surface, lightDirection)) * AbsDot(lightDirection, SHADING_SPACE_NORMAL);
+        if (lightVisibility > 0.0f) {//&& PBRT::SpherGeom::SameHemisphere(surface.outgoingRay, lightDirection) could be an optimisation for only opache scenes
+            glm::vec3 spectrum = BRDF(rayData->randomSeed, surface, lightDirection) * AbsDot(lightDirection, SHADING_SPACE_NORMAL);
 
-            rayData->radiance += (rayData->beta * spectrum * Lighting::GetSample(surface.position, pointLight)) / (lightPropability * Lighting::GetPDF(pointLight));// ( sampleWeight * surface * light ) / light propability * PDF
-
-            if (rayData->isDebugRay) {
-                printf("lightVisibility > 0.0f \n");
+            if (spectrum != glm::vec3(0)) {
+                rayData->radiance += (rayData->beta * spectrum * Lighting::GetSample(surface.position, pointLight)) / (lightPropability * Lighting::GetPDF(pointLight));// ( sampleWeight * surface * light ) / light propability * PDF
             }
 
-            if (rayData->isDebugRay) {
-                Print("added Radiance", spectrum, rayData->bounceCounter);
-                //Print("BRDF", BRDF(rayData->randomSeed, surface, lightDirection), rayData->bounceCounter);
-                //Print("Position", surface.position, rayData->bounceCounter);
-            }
+            //if (rayData->isDebugRay) {
+            //    printf("lightVisibility > 0.0f \n");
+            //}
+
+            //if (rayData->isDebugRay) {
+            //    Print("added Radiance", spectrum, rayData->bounceCounter);
+            //    //Print("BRDF", BRDF(rayData->randomSeed, surface, lightDirection), rayData->bounceCounter);
+            //    //Print("Position", surface.position, rayData->bounceCounter);
+            //}
         }
     }
 
     BSDFSample bsdfSample;
     if (!GetNewRayDirection(rayData->randomSeed, surface, bsdfSample)) {
-        rayData->beta = glm::vec3(0);
+        rayData->endPath = true;
 
         if (rayData->isDebugRay) {
             printf("End Path \n");
@@ -490,6 +482,22 @@ extern "C" __global__ void __closesthit__radiance()
 
         return;
     }
+
+    //auto SampleUniformHemisphere = [](glm::vec2 u) {
+    //    float z = u[0];
+    //    //float r = SafeSqrt(1 - Sqr(z));
+    //    float r = glm::sqrt(glm::max(0.0f, 1.0f - Sqr(z)));
+    //    float phi = 2 * 3.14159265359f * u[1];
+    //    return glm::vec3(r * std::cos(phi), r * std::sin(phi), z);
+    //    };
+
+    //bsdfSample.direction = RandomHemisphereDirection(rayData->randomSeed, SHADING_SPACE_NORMAL);
+    /*bsdfSample.direction = SampleUniformHemisphere(glm::vec2(RandomOptix::rnd(rayData->randomSeed), RandomOptix::rnd(rayData->randomSeed)));
+    if (glm::dot(surface.outgoingRay, SHADING_SPACE_NORMAL) * glm::dot(bsdfSample.direction, SHADING_SPACE_NORMAL) < 0) {
+        bsdfSample.direction = -bsdfSample.direction;
+    }*/
+    //bsdfSample.pdf = 1 / (2 * 3.14159265359f);
+    //bsdfSample.color = BRDF(rayData->randomSeed, surface, bsdfSample.direction);
 
     rayData->beta *= bsdfSample.color * AbsDot(bsdfSample.direction, SHADING_SPACE_NORMAL) / bsdfSample.pdf;
 
@@ -499,7 +507,7 @@ extern "C" __global__ void __closesthit__radiance()
     }
 
     rayData->nextOrigin = surface.position + positionOffset;
-    rayData->nextDirection = surface.ShadingToWorld * bsdfSample.direction;
+    rayData->nextDirection = glm::normalize(surface.ShadingToWorld * bsdfSample.direction);
 
     //rayData->radiance = (surface.gNormal + 1.0f) / 2.0f;
     //rayData->radiance = (surface.ShadingToWorld * surface.sNormal + 1.0f) / 2.0f;
@@ -624,16 +632,18 @@ __device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::v
 
     raydata.nextOrigin = origin;
     raydata.nextDirection = direction;
+    raydata.endPath = false;
 
     raydata.isDebugRay = false;
 
-    glm::ivec2 debugPixel = glm::ivec2(500, 120);
+    //glm::ivec2 debugPixel = glm::ivec2(650, 120);
+    glm::ivec2 debugPixel = glm::ivec2(760, 1079 - 710);//from tev to build in
 
     if (launchIndex == debugPixel && optixLaunchParams.frame.id == 10) {
         raydata.isDebugRay = true;
     }
 
-    while (raydata.bounceCounter < raydata.maxBounces && glm::length(raydata.beta) > 0.00001) {
+    while (!raydata.endPath && raydata.bounceCounter < raydata.maxBounces && glm::length(raydata.beta) > 0.00001f) {//glm::length(raydata.beta) > 0.00001f // raydata.beta != glm::vec3(0)
     
         /*if (raydata.isDebugRay) {
             Print("Beta", raydata.beta);
@@ -644,9 +654,9 @@ __device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::v
 
     //TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
 
-    if (launchIndex.x == debugPixel.x || launchIndex.y == debugPixel.y) {
+    /*if (launchIndex.x == debugPixel.x || launchIndex.y == debugPixel.y) {
         return glm::vec3(1, 0, 0);
-    }
+    }*/
 
 
     return raydata.radiance;

@@ -19,21 +19,21 @@ struct Surface {
 
     bool conductor;
 
-    __device__ __host__ static bool IsEffectifvelySmooth(float r) {
-        return r < 0.0001;
+    __device__ __host__ static bool IsEffectifvelySmooth(float alpha) {
+        return alpha < 1e-3f;
     }
 
     __device__ __host__ static float GetAlpha(float roughness) {
         //return Sqr(roughness);
-        return sqrt(roughness);
+        return glm::sqrt(roughness);
+        //return roughness;
     }
 
     __device__ __host__ bool IsEffectifvelySmooth() {
-        return IsEffectifvelySmooth(this->roughness);
+        return IsEffectifvelySmooth(this->GetAlpha());
     }
 
     __device__ __host__ float GetAlpha() {
-        //return Sqr(this->roughness);
-        return sqrt(this->roughness);
+        return GetAlpha(this->roughness);
     }
 };

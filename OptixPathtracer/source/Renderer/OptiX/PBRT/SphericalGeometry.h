@@ -6,11 +6,11 @@ namespace PBRT {
     namespace SpherGeom {
 
         __device__ __host__ float CosTheta(glm::vec3 w) { return w.z; }
-        __device__ __host__ float Cos2Theta(glm::vec3 w) { return w.z * w.z; }
-        __device__ __host__ float AbsCosTheta(glm::vec3 w) { return std::abs(w.z); }
+        __device__ __host__ float Cos2Theta(glm::vec3 w) { return Sqr(w.z); }
+        __device__ __host__ float AbsCosTheta(glm::vec3 w) { return glm::abs(w.z); }
 
         __device__ __host__ float Sin2Theta(glm::vec3 w) { return glm::max(0.0f, 1.0f - Cos2Theta(w)); }
-        __device__ __host__ float SinTheta(glm::vec3 w) { return sqrt(Sin2Theta(w)); }
+        __device__ __host__ float SinTheta(glm::vec3 w) { return glm::sqrt(Sin2Theta(w)); }
 
         __device__ __host__ float TanTheta(glm::vec3 w) { return SinTheta(w) / CosTheta(w); }
         __device__ __host__ float Tan2Theta(glm::vec3 w) { return Sin2Theta(w) / Cos2Theta(w); }

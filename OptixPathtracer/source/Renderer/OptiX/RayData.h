@@ -14,6 +14,8 @@ struct RadianceRayData {
 
     unsigned int randomSeed;
 
+    bool endPath;
+
     bool isDebugRay;
 };
 

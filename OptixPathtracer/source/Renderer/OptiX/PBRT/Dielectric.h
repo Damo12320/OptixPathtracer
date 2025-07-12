@@ -7,6 +7,16 @@
 namespace PBRT {
     namespace Dielectric {
 
+        enum class TransportMode { Radiance, Importance };
+
+        __device__ TransportMode FlipMode(TransportMode mode) {
+            if (mode == TransportMode::Radiance) {
+                return TransportMode::Importance;
+            }
+
+            return TransportMode::Radiance;
+        }
+
         __device__ __host__ float FresnelDielectric(float cosTheta_i, float ior = 1.5f) {
             //ior = 1.5f;
 
@@ -83,11 +93,11 @@ namespace PBRT {
 
 
 
-        __device__ __host__ glm::vec3 f(float roughness, glm::vec3 wo, glm::vec3 wi) {
+        __device__ __host__ glm::vec3 f(Surface surface, glm::vec3 wo, glm::vec3 wi, TransportMode mode) {
             const float eta = 1.5f;
-            const float alpha = Surface::GetAlpha(roughness);
+            const float alpha = surface.GetAlpha();
 
-            if (eta == 1 || Surface::IsEffectifvelySmooth(roughness))
+            if (eta == 1 || surface.IsEffectifvelySmooth())
                 return glm::vec3(0.0f);
 
             // Evaluate rough dielectric BSDF
@@ -121,8 +131,8 @@ namespace PBRT {
                 float denom = Sqr(glm::dot(wi, wm) + glm::dot(wo, wm) / etap) * cosTheta_i * cosTheta_o;
                 float ft = Microfacet::D_Isotropic(wm, alpha) * (1.0f - F) * Microfacet::G_Isotropic(wo, wi, alpha) * std::abs(glm::dot(wi, wm) * glm::dot(wo, wm) / denom);
                 // Account for non-symmetry with transmission to different medium
-                //if (mode == TransportMode::Radiance)
-                ft /= Sqr(etap);
+                if (mode == TransportMode::Radiance)
+                    ft /= Sqr(etap);
 
                 return glm::vec3(ft);
             }
@@ -133,14 +143,15 @@ namespace PBRT {
 
 
         //__device__ __host__ bool Sample_f(unsigned int& randomSeed, float roughness, glm::vec3 wo, BSDFSample& sample)
-        __device__ __host__ bool Sample_f(unsigned int& randomSeed, float roughness, glm::vec3 wo, BSDFSample& sample, bool reflection = true, bool transmission = true) {
+        __device__ __host__ bool Sample_f(unsigned int& randomSeed, Surface surface, glm::vec3 wo, BSDFSample& sample, TransportMode mode, bool reflection, bool transmission) {
             const float eta = 1.5f;
-            const float alpha = Surface::GetAlpha(roughness);
+            const float alpha = surface.GetAlpha();
             const float uc = RandomOptix::rnd(randomSeed);
 
-            if (eta == 1 || Surface::IsEffectifvelySmooth(roughness)) {
+            if (eta == 1 || surface.IsEffectifvelySmooth()) {
                 // Sample perfect specular dielectric BSDF
-                float R = FresnelDielectric(SpherGeom::CosTheta(wo), eta), T = 1 - R;
+                float R = FresnelDielectric(SpherGeom::CosTheta(wo), eta);
+                float T = 1.0f - R;
 
                 // Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
                 float pr = R, pt = T;
@@ -184,8 +195,8 @@ namespace PBRT {
 
                     glm::vec3 ft(T / SpherGeom::AbsCosTheta(wi));
                     // Account for non-symmetry with transmission to different medium
-                    //if (mode == TransportMode::Radiance)
-                    ft /= Sqr(etap);
+                    if (mode == TransportMode::Radiance)
+                        ft /= Sqr(etap);
 
                     sample.color = ft;
                     sample.direction = wi;
@@ -258,8 +269,8 @@ namespace PBRT {
                     glm::vec3 ft(T * Microfacet::D_Isotropic(wm, alpha) * Microfacet::G_Isotropic(wo, wi, alpha) * std::abs(glm::dot(wi, wm) * glm::dot(wo, wm) /
                             (SpherGeom::CosTheta(wi) * SpherGeom::CosTheta(wo) * denom)));
                     // Account for non-symmetry with transmission to different medium
-                    //if (mode == TransportMode::Radiance)
-                    ft /= Sqr(etap);
+                    if (mode == TransportMode::Radiance)
+                        ft /= Sqr(etap);
 
                     sample.color = ft;
                     sample.direction = wi;
@@ -276,64 +287,59 @@ namespace PBRT {
             }
         }
 
+        __device__ __host__ float PDF(Surface surface, glm::vec3 wo, glm::vec3 wi, bool reflection, bool transmission) {
+            const float eta = 1.5f;
 
-        //__device__ __host__ float PDF(float roughness, glm::vec3 wo, glm::vec3 wi) {
-        //    const float eta = 1.5f;
+            if (eta == 1 || surface.IsEffectifvelySmooth())
+                return 0;
 
-        //    //const float alpha = Sqr(roughness);
-        //    const float alpha = sqrt(roughness);
+            const float alpha = surface.GetAlpha();
 
-        //    if (eta == 1 || Surface::IsEffectifvelySmooth(roughness))
-        //        return 0;
-        //    // Evaluate sampling PDF of rough dielectric BSDF
-        //    // Compute generalized half vector _wm_
-        //    float cosTheta_o = SpherGeom::CosTheta(wo);
-        //    float cosTheta_i = SpherGeom::CosTheta(wi);
+            // Evaluate sampling PDF of rough dielectric BSDF
+            // Compute generalized half vector _wm_
+            float cosTheta_o = SpherGeom::CosTheta(wo);
+            float cosTheta_i = SpherGeom::CosTheta(wi);
+            bool reflect = cosTheta_i * cosTheta_o > 0;
+            float etap = 1.0f;
+            if (!reflect)
+                etap = cosTheta_o > 0.0f ? eta : (1.0f / eta);
+            glm::vec3 wm = wi * etap + wo;
+            //CHECK_RARE(1e-5f, LengthSquared(wm) == 0);
+            if (cosTheta_i == 0 || cosTheta_o == 0 || LengthSqr(wm) == 0)
+                return {};
+            //wm = FaceForward(glm::normalize(wm), glm::vec3(0, 0, 1));
+            wm = glm::faceforward(-glm::normalize(wm), glm::vec3(0, 0, 1), glm::normalize(wm));
 
-        //    bool reflect = cosTheta_i * cosTheta_o > 0;
-        //    float etap = 1;
-        //    if (!reflect)
-        //        etap = cosTheta_o > 0 ? eta : (1 / eta);
-        //    glm::vec3 wm = wi * etap + wo;
-        //    //CHECK_RARE(1e-5f, LengthSquared(wm) == 0);
+            // Discard backfacing microfacets
+            if (glm::dot(wm, wi) * cosTheta_i < 0 || glm::dot(wm, wo) * cosTheta_o < 0)
+                return {};
 
-        //    if (cosTheta_i == 0 || cosTheta_o == 0 || Sqr(glm::length(wm)) == 0)
-        //        return {};
+            // Determine Fresnel reflectance of rough dielectric boundary
+            float R = FresnelDielectric(glm::dot(wo, wm), eta);
+            float T = 1.0f - R;
 
-        //    //wm = FaceForward(Normalize(wm), Normal3f(0, 0, 1));
-        //    wm = glm::faceforward(-glm::normalize(wm), glm::vec3(0, 0, 1), glm::normalize(wm));
+            // Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
+            float pr = R, pt = T;
+            if (!reflection)
+                pr = 0;
+            if (!transmission)
+                pt = 0;
+            if (pr == 0 && pt == 0)
+                return {};
 
-        //    // Discard backfacing microfacets
-        //    if (glm::dot(wm, wi) * cosTheta_i < 0 || glm::dot(wm, wo) * cosTheta_o < 0)
-        //        return {};
-
-        //    // Determine Fresnel reflectance of rough dielectric boundary
-        //    float R = FresnelDielectric(glm::dot(wo, wm), eta);
-        //    float T = 1 - R;
-
-        //    // Compute probabilities _pr_ and _pt_ for sampling reflection and transmission
-        //    float pr = R, pt = T;
-        //    /*if (!(sampleFlags & BxDFReflTransFlags::Reflection))
-        //        pr = 0;
-        //    if (!(sampleFlags & BxDFReflTransFlags::Transmission))
-        //        pt = 0;*/
-        //    if (pr == 0 && pt == 0)
-        //        return {};
-
-        //    // Return PDF for rough dielectric
-        //    float pdf;
-        //    if (reflect) {
-        //        // Compute PDF of rough dielectric reflection
-        //        pdf = Microfacet::PDF_Isotropic(wo, wm, alpha) / (4 * AbsDot(wo, wm)) * pr / (pr + pt);
-
-        //    }
-        //    else {
-        //        // Compute PDF of rough dielectric transmission
-        //        float denom = Sqr(glm::dot(wi, wm) + glm::dot(wo, wm) / etap);
-        //        float dwm_dwi = AbsDot(wi, wm) / denom;
-        //        pdf = Microfacet::PDF_Isotropic(wo, wm, alpha) * dwm_dwi * pt / (pr + pt);
-        //    }
-        //    return pdf;
-        //}
+            // Return PDF for rough dielectric
+            float pdf;
+            if (reflect) {
+                // Compute PDF of rough dielectric reflection
+                pdf = Microfacet::PDF_Isotropic(wo, wm, alpha) / (4.0f * AbsDot(wo, wm)) * pr / (pr + pt);
+            }
+            else {
+                // Compute PDF of rough dielectric transmission
+                float denom = Sqr(glm::dot(wi, wm) + glm::dot(wo, wm) / etap);
+                float dwm_dwi = AbsDot(wi, wm) / denom;
+                pdf = Microfacet::PDF_Isotropic(wo, wm,alpha) * dwm_dwi * pt / (pr + pt);
+            }
+            return pdf;
+        }
     }
 }

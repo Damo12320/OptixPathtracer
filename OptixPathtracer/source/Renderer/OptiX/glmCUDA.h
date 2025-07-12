@@ -3,6 +3,8 @@
 #include <cuda_runtime.h>
 #include "../../3rdParty/glm/glm.hpp"
 
+//Helper Functions, since glm doesn't like vectors as a parameter
+
 __device__ __host__ glm::vec3 SaveClamp(glm::vec3 value, float min, float max) {
     glm::vec3 temp = value;
     temp.x = glm::clamp(value.x, min, max);
@@ -78,16 +80,32 @@ __device__ __host__ float SaveMax(glm::vec3 value) {
     return glm::max(glm::max(value.x, value.y), value.z);
 }
 
-__device__ __host__ float Sqr(float value) {
-    return value * value;
+__device__ __host__ glm::vec3 SaveSqrt(glm::vec3 value) {
+    glm::vec3 temp = value;
+    temp.x = glm::sqrt(value.x);
+    temp.y = glm::sqrt(value.y);
+    temp.z = glm::sqrt(value.z);
+
+    return temp;
 }
 
-__device__ __host__ glm::vec3 Sqr(glm::vec3 value) {
+
+
+template <typename T>
+__device__ __host__ T Sqr(T value) {
     return value * value;
 }
 
 __device__ __host__ float AbsDot(glm::vec3 value1, glm::vec3 value2) {
     return fabsf(glm::dot(value1, value2));
+}
+
+__device__ __host__ float LengthSqr(glm::vec3 vec) {
+    return Sqr(vec.x) + Sqr(vec.y) + Sqr(vec.z);
+}
+
+__device__ __host__ float LengthSqr(glm::vec2 vec) {
+    return Sqr(vec.x) + Sqr(vec.y);
 }
 
 #pragma region DebugMethods

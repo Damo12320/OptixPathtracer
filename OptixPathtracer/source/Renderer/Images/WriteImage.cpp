@@ -45,10 +45,19 @@ namespace WriteImage {
 		images[1].reserve(size.x * size.y);//G
 		images[2].reserve(size.x * size.y);//B
 
-		for (const glm::vec3& pixel : pixels) {
-			images[0].push_back(pixel.r);//R
-			images[1].push_back(pixel.g);//G
-			images[2].push_back(pixel.b);//B
+		for (int y = size.y - 1; y >= 0; y--) {
+			for (int x = 0; x < size.x; x++) {
+				glm::vec3& pixel = pixels[x + size.x * y];
+
+				if (isnan(pixel.r) || isnan(pixel.g) || isnan(pixel.b)) {
+					std::cout << "Pixel is not a number" << std::endl;
+					pixel = glm::vec3(0);
+				}
+
+				images[0].push_back(pixel.r);//R
+				images[1].push_back(pixel.g);//G
+				images[2].push_back(pixel.b);//B
+			}
 		}
 
 		float* image_ptr[3];

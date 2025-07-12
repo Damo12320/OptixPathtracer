@@ -5,8 +5,9 @@
 
 int main()
 {
+    //right Handed Coordinate System
     //World Coordinate System: x = out of the mnonitor, y = up, z = left
-    const int maxSamples = 100;
+    const int maxSamples = 1024;
     const int maxBounces = 3;//more as "max Collisions per path"
 
     //std::string modelPath{ "assets/Models/Sponza/" };
@@ -30,6 +31,7 @@ int main()
     camera->SetBlenderPosition(glm::vec3(3.85382f, 0.0f, 1.0f));
     camera->SetBlenderRotation(glm::vec3(90.0f, 0.0f, 90.0f));
 
+    //glm::vec3 lightColor = glm::vec3(1);
     glm::vec3 lightColor = glm::vec3(1);
     //pointLights.push_back(PointLight{ GlmHelper::BlenderToEnginePosition(1.33906f, -0.7f, 0.299367f), glm::vec3(100)});
     pointLights.push_back(PointLight{ GlmHelper::BlenderToEnginePosition(1.33906f, -0.7f, 0.299367f), lightColor });

@@ -55,6 +55,7 @@
     <ClInclude Include="source\Renderer\OpenGL\ShaderProgramm.h" />
     <ClInclude Include="source\Renderer\OptiX\LightsStruct.h" />
     <ClInclude Include="source\Renderer\OptiX\PBRT\BSDFSample.h" />
+    <ClInclude Include="source\Renderer\OptiX\PBRT\Complex.h" />
     <ClInclude Include="source\Renderer\OptiX\PBRT\Conductor.h" />
     <ClInclude Include="source\Renderer\OptiX\PBRT\Dielectric.h" />
     <ClInclude Include="source\Renderer\OptiX\PBRT\GlossyDiffuse.h" />

@@ -22,8 +22,4 @@ void main()
 	{
 		color = frameBufferColor + addedColor * weight;
 	}
-
-	//color = addedColor;
-	//color = addedColor * vec4(1, 0, 0, 1);
-	//color = vec4(1, 0, 0, 1);
 }
