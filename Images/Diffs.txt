@@ -1,0 +1,14 @@
+MSE:, 
+Conductor,  2.571821e-7
+Dielectric, 1.2437624e-7
+Dielectric20, 0.000049750368
+Diffuse, 0.000004586374
+Layered, 8.8446933e-7
+
+
+FLIP:, 
+Conductor, 0.0017468039
+Dielectric, 0.00084382464
+Dielectric20, 0.007553334
+Diffuse, 0.006595257
+Layered, 0.0032398894
