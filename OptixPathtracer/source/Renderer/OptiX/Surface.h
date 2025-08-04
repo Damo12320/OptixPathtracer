@@ -24,8 +24,8 @@ struct Surface {
     }
 
     __device__ __host__ static float GetAlpha(float roughness) {
-        //return Sqr(roughness);
-        return glm::sqrt(roughness);
+        return Sqr(roughness);
+        //return glm::sqrt(roughness);
         //return roughness;
     }
 

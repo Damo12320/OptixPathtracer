@@ -41,10 +41,15 @@ void Mesh::CalculateModelMatrix() {
 
 void Mesh::CalculateTangentBasis() {
 	this->tangents = std::vector<glm::vec3>();
-	this->tangents.resize(this->vertecies.size());
-
 	this->bitangents = std::vector<glm::vec3>();
+
+	this->tangents.resize(this->vertecies.size());
 	this->bitangents.resize(this->vertecies.size());
+
+	if (this->texCoord.size() != this->vertecies.size()) {
+		this->texCoord.resize(this->vertecies.size());
+		return;
+	}
 
 	for (int i = 0; i < this->index.size(); i++)
 	{

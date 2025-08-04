@@ -297,31 +297,18 @@ __device__ bool GetNewRayDirection(unsigned int& seed, Surface& surface, BSDFSam
     //bool test = PBRT::Dielectric::Sample_f(seed, surface, surface.outgoingRay, bsdfSample, PBRT::Dielectric::TransportMode::Radiance, true, true);
     //bool test = PBRT::GlossyDiffuse::Sample_f(seed, surface, bsdfSample);
     //bool test = PBRT::LambertDiffuse::Sample_f(seed, surface, surface.outgoingRay, bsdfSample, true);
-    bool test = PBRT::Conductor::Sample_f(seed, surface.albedo, surface.roughness, surface.outgoingRay, bsdfSample);
-    return test;
+    //bool test = PBRT::Conductor::Sample_f(seed, surface.albedo, surface.roughness, surface.outgoingRay, bsdfSample);
+    //return test;
 
-    //if (surface.conductor) {
-    //
-    //    return PBRT::Conductor::Sample_f(seed, surface, bsdfSample);
-    //}
-    //else {
-    //    /*pdf = pdfRandomHemisphere;
-    //    sample = surface.albedo / 3.14159265359f;
-    //    newDirection = RandomHemisphereDirection(seed, surface.sNormal);*/
-    //
-    //    /*bool test = PBRT::Dielectric::Sample_f(seed, surface, newDirection, pdf, sample);
-    //    sample *= surface.albedo;
-    //    return test;*/
-    //
-    //
-    //    /*bool test = PBRT::LambertDiffuse::Sample_f(seed, surface.roughness, surface.outgoingRay, newDirection, pdf, sample);
-    //    sample *= surface.albedo;
-    //    return test;*/
-    //
-    //    bool test = PBRT::GlossyDiffuse::Sample_f(seed, surface, bsdfSample);
-    //
-    //    return test;
-    //}
+    if (surface.conductor) {
+    
+        return PBRT::Conductor::Sample_f(seed, surface.albedo, surface.roughness, surface.outgoingRay, bsdfSample);
+    }
+    else {
+        bool test = PBRT::GlossyDiffuse::Sample_f(seed, surface, bsdfSample);
+    
+        return test;
+    }
 
     //return true;
 }
@@ -330,16 +317,16 @@ __device__ glm::vec3 BRDF(unsigned int& seed, Surface& surface, const glm::vec3 
     //return PBRT::Dielectric::f(surface, surface.outgoingRay, incommingRay, PBRT::Dielectric::TransportMode::Radiance);
     //return PBRT::GlossyDiffuse::f(seed, surface, incommingRay);
     //return PBRT::LambertDiffuse::f(surface, surface.outgoingRay, incommingRay);
-    return PBRT::Conductor::f(surface.albedo, surface.roughness, surface.outgoingRay, incommingRay);
+    //return PBRT::Conductor::f(surface.albedo, surface.roughness, surface.outgoingRay, incommingRay);
 
-    //if (surface.conductor) {
-    //    return PBRT::Conductor::f(surface, incommingRay);
-    //}
-    //else {
-    //    //return PBRT::Dielectric::f(surface, incommingRay) * surface.albedo;
-    //    //return PBRT::LambertDiffuse::f(surface.roughness, surface.outgoingRay, incommingRay) * surface.albedo;
-    //    return PBRT::GlossyDiffuse::f(seed, surface, incommingRay);
-    //}
+    if (surface.conductor) {
+        return PBRT::Conductor::f(surface.albedo, surface.roughness, surface.outgoingRay, incommingRay);
+    }
+    else {
+        //return PBRT::Dielectric::f(surface, incommingRay) * surface.albedo;
+        //return PBRT::LambertDiffuse::f(surface.roughness, surface.outgoingRay, incommingRay) * surface.albedo;
+        return PBRT::GlossyDiffuse::f(seed, surface, incommingRay);
+    }
 
     //Diffuse
     //return mix(surface.albedo / 3.14159265359f, conductor, surface.metallic);
@@ -441,6 +428,10 @@ extern "C" __global__ void __closesthit__radiance()
         Print("Roughness", surface.roughness, rayData->bounceCounter);
         Print("Metallic", surface.metallic, rayData->bounceCounter);
     }
+
+
+    //rayData->beta = glm::vec3(1);
+    //rayData->radiance = surface.albedo;
 
     //Sample direct lighting (pointlight)
     //Get Random Light

@@ -124,16 +124,17 @@ void ModelLoader::ParseNodes(Model* finalModel, tinygltf::Model& model, tinygltf
 			finalMesh->normal.push_back(normal);
 		}
 
-
 		//TexCoords
-		accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
-		bufferView = model.bufferViews[accessor.bufferView];
-		buffer = model.buffers[bufferView.buffer];
-		const float* texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+		if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+			accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
+			bufferView = model.bufferViews[accessor.bufferView];
+			buffer = model.buffers[bufferView.buffer];
+			const float* texCoords = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 
-		for (size_t i = 0; i < accessor.count; ++i) {
-			glm::vec2 texCoord{ texCoords[i * 2 + 0] , texCoords[i * 2 + 1] };
-			finalMesh->texCoord.push_back(texCoord);
+			for (size_t i = 0; i < accessor.count; ++i) {
+				glm::vec2 texCoord{ texCoords[i * 2 + 0] , texCoords[i * 2 + 1] };
+				finalMesh->texCoord.push_back(texCoord);
+			}
 		}
 
 		//Indicies
@@ -226,11 +227,17 @@ void ModelLoader::ParseTransformation(Mesh* finalMesh, tinygltf::Node& node) {
 		finalMesh->rotation = glm::quat();
 	}
 	else {
-		finalMesh->rotation = glm::quat(
+		/*finalMesh->rotation = glm::quat(
 			node.rotation[0],
 			node.rotation[1],
 			node.rotation[2],
 			node.rotation[3]
+		);*/
+		finalMesh->rotation = glm::quat(
+			node.rotation[3],
+			node.rotation[0],
+			node.rotation[1],
+			node.rotation[2]
 		);
 	}
 
