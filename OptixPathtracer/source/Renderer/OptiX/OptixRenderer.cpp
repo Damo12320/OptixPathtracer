@@ -574,8 +574,8 @@ void OptixRenderer::CreateTextures() {
         int32_t width = texture->resolution.x;
         int32_t height = texture->resolution.y;
         int32_t numComponents = 4;
-        int32_t pitch = width * numComponents * sizeof(uint8_t);
-        channel_desc = cudaCreateChannelDesc<uchar4>();
+        int32_t pitch = width * numComponents * sizeof(float);
+        channel_desc = cudaCreateChannelDesc<float4>();
 
         cudaArray_t& pixelArray = textureArrays[textureID];
         CUDA_CHECK(MallocArray(&pixelArray,
@@ -595,9 +595,9 @@ void OptixRenderer::CreateTextures() {
         tex_desc.addressMode[0] = cudaAddressModeWrap;
         tex_desc.addressMode[1] = cudaAddressModeWrap;
         tex_desc.filterMode = cudaFilterModeLinear;
-        tex_desc.readMode = cudaReadModeNormalizedFloat;
+        tex_desc.readMode = cudaReadModeElementType;//cudaReadModeNormalizedFloat <- this doesn't work for color. Color should not be normalized. But now it has to be uploaded as a float!
         tex_desc.normalizedCoords = 1;
-        tex_desc.maxAnisotropy = 1;
+        tex_desc.maxAnisotropy = 16;
         tex_desc.maxMipmapLevelClamp = 99;
         tex_desc.minMipmapLevelClamp = 0;
         tex_desc.mipmapFilterMode = cudaFilterModePoint;

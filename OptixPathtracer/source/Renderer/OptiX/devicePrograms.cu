@@ -147,7 +147,7 @@ __device__ void SampleTextures(MeshSBTData& sbtData, glm::vec3& texNormal, Surfa
 
 
         glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, x, y));
-        surface.albedo *= glm::vec3(fromTexture.x, fromTexture.y, fromTexture.z);
+        surface.albedo = glm::vec3(fromTexture.r, fromTexture.g, fromTexture.b);
     }
 
     if (sbtData.hasNormalTexture) {
