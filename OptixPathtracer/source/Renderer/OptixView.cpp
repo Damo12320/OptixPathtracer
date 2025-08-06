@@ -132,7 +132,7 @@ void OptixView::Run() {
 	//Render Loop
 	while (!glfwWindowShouldClose(this->window->window)) {
 
-		if (this->maxSamples < 0 || this->samples <= this->maxSamples) {
+		if (this->maxSamples < 0 || this->samples < this->maxSamples) {
 			this->optixRenderer->SetCamera(this->camera.get());
 
 			//Optix
@@ -142,7 +142,7 @@ void OptixView::Run() {
 				this->clearFrameBuffer = false;
 
 				this->framebuffer->Bind();
-				glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+				glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 				glClear(GL_COLOR_BUFFER_BIT);
 
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -160,14 +160,14 @@ void OptixView::Run() {
 				std::cout << "at Sample: " << samples << std::endl;
 			}
 		}
-		else if (this->samples == this->maxSamples + 1) {
+		else if (this->samples == this->maxSamples) {
 			std::cout << "Render is finished" << std::endl;
 			//WriteImage::WriteTextureToBMP(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.bmp");
 			WriteImage::WriteTextureToEXR(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.exr");
 			this->samples++;
 		}
 
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		this->finalShader->Bind();
@@ -218,6 +218,18 @@ void OptixView::AddNewFrameToBuffer(GLTexture2D* newFrame, Framebuffer* buffer) 
 		return;
 	}
 
+
+	GLTexture2D* texture = this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0);
+	std::vector<glm::vec3> pixels;
+	texture->DownloadTexture(pixels);
+
+
+
+	glm::vec3 t = pixels[5];
+
+
+
+
 	//Bind shader
 	this->combineShader->Bind();
 
@@ -252,6 +264,12 @@ void OptixView::AddNewFrameToBuffer(GLTexture2D* newFrame, Framebuffer* buffer) 
 
 	//Unbind Framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+	pixels.clear();
+	texture->DownloadTexture(pixels);
+
+	glm::vec3 g = pixels[5];
 }
 
 void OptixView::GLFrameSetup() {

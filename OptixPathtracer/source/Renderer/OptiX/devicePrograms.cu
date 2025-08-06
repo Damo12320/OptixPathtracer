@@ -142,6 +142,10 @@ __device__ void SampleTextures(MeshSBTData& sbtData, glm::vec3& texNormal, Surfa
     float y = surface.texCoord.y;
 
     if (sbtData.hasAlbedoTexture) {
+        //uchar4 test = tex2D<uchar4>(sbtData.albedoTexture, x, y);
+        //glm::vec4 fromTexture = glm::vec4(test.x / 255.0f, test.y / 255.0f, test.z / 255.0f, test.w / 255.0f);
+
+
         glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, x, y));
         surface.albedo *= glm::vec3(fromTexture.x, fromTexture.y, fromTexture.z);
     }
@@ -431,7 +435,8 @@ extern "C" __global__ void __closesthit__radiance()
 
 
     //rayData->beta = glm::vec3(1);
-    //rayData->radiance = surface.albedo;
+    rayData->radiance = surface.albedo;
+    return;
 
     //Sample direct lighting (pointlight)
     //Get Random Light
@@ -634,16 +639,16 @@ __device__ glm::vec3 SamplePath(glm::ivec2 launchIndex, glm::vec3 origin, glm::v
         raydata.isDebugRay = true;
     }
 
-    while (!raydata.endPath && raydata.bounceCounter < raydata.maxBounces && glm::length(raydata.beta) > 0.00001f) {//glm::length(raydata.beta) > 0.00001f // raydata.beta != glm::vec3(0)
-    
-        /*if (raydata.isDebugRay) {
-            Print("Beta", raydata.beta);
-        }*/
-    
-        TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
-    }
+    //while (!raydata.endPath && raydata.bounceCounter < raydata.maxBounces && glm::length(raydata.beta) > 0.00001f) {//glm::length(raydata.beta) > 0.00001f // raydata.beta != glm::vec3(0)
+    //
+    //    /*if (raydata.isDebugRay) {
+    //        Print("Beta", raydata.beta);
+    //    }*/
+    //
+    //    TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
+    //}
 
-    //TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
+    TraceRadiance(raydata.nextOrigin, raydata.nextDirection, 0.0f, 100.0f, &raydata);
 
     /*if (launchIndex.x == debugPixel.x || launchIndex.y == debugPixel.y) {
         return glm::vec3(1, 0, 0);
