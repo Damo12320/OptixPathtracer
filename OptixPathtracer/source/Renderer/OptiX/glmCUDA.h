@@ -32,6 +32,16 @@ __device__ __host__ glm::vec3 SavePow(glm::vec3 value, glm::vec3 pow) {
     return temp;
 }
 
+__device__ __host__ glm::vec4 SavePow(glm::vec4 value, glm::vec4 pow) {
+    glm::vec4 temp = value;
+    temp.x = powf(value.x, pow.x);
+    temp.y = powf(value.y, pow.y);
+    temp.z = powf(value.z, pow.z);
+    temp.w = powf(value.w, pow.w);
+
+    return temp;
+}
+
 __device__ __host__ glm::vec3 SavePow(glm::vec3 value, float pow) {
     glm::vec3 temp = value;
     temp.x = powf(value.x, pow);
@@ -46,6 +56,16 @@ __device__ __host__ glm::vec3 SaveMix(glm::vec3 value1, glm::vec3 value2, glm::v
     temp.x = value1.x * (1 - mixValue.x) + value2.x * mixValue.x;
     temp.y = value1.y * (1 - mixValue.y) + value2.y * mixValue.y;
     temp.z = value1.z * (1 - mixValue.z) + value2.z * mixValue.z;
+
+    return temp;
+}
+
+__device__ __host__ glm::vec4 SaveMix(glm::vec4 value1, glm::vec4 value2, glm::vec4 mixValue) {
+    glm::vec4 temp = value1;
+    temp.x = value1.x * (1 - mixValue.x) + value2.x * mixValue.x;
+    temp.y = value1.y * (1 - mixValue.y) + value2.y * mixValue.y;
+    temp.z = value1.z * (1 - mixValue.z) + value2.z * mixValue.z;
+    temp.w = value1.w * (1 - mixValue.w) + value2.w * mixValue.w;
 
     return temp;
 }

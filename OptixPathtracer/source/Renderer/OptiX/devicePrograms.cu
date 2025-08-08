@@ -67,6 +67,20 @@ extern "C" __global__ void __closesthit__shadow()
 }
 
 
+__device__ glm::vec4 SRGB8ToLinear(glm::vec4 color)
+{
+    glm::vec4 mixAmount = glm::step(glm::vec4(0.04045), color);
+
+    glm::vec4 a = color / glm::vec4(12.92);
+
+    glm::vec4 nom = color + glm::vec4(0.055);
+    glm::vec4 bottom = nom / glm::vec4(1.055);
+    glm::vec4 b = SavePow(bottom, glm::vec4(2.4));
+
+    return SaveMix(a, b, mixAmount);
+}
+
+
 
 __device__ void GetVertices(MeshSBTData& sbtData, Surface& surface) {
     surface.vertices[0] = sbtData.modelMatrix * glm::vec4(sbtData.vertex[surface.index.x], 1);
@@ -143,6 +157,7 @@ __device__ void SampleTextures(MeshSBTData& sbtData, glm::vec3& texNormal, Surfa
 
     if (sbtData.hasAlbedoTexture) {
         glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, x, y));
+        fromTexture = SRGB8ToLinear(fromTexture);
         surface.albedo *= glm::vec3(fromTexture.x, fromTexture.y, fromTexture.z);
     }
 
@@ -432,6 +447,7 @@ extern "C" __global__ void __closesthit__radiance()
 
     //rayData->beta = glm::vec3(1);
     //rayData->radiance = surface.albedo;
+    //return;
 
     //Sample direct lighting (pointlight)
     //Get Random Light
@@ -530,6 +546,7 @@ __device__ bool AlphaCutout() {
             + v * sbtData.texcoord[index.z];
 
         glm::vec4 fromTexture = OptixHelpers::Vec4(tex2D<float4>(sbtData.albedoTexture, tc.x, tc.y));
+        fromTexture = SRGB8ToLinear(fromTexture);
 
         return fromTexture.a < 0.9;
     }

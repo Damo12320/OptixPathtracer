@@ -132,7 +132,7 @@ void OptixView::Run() {
 	//Render Loop
 	while (!glfwWindowShouldClose(this->window->window)) {
 
-		if (this->maxSamples < 0 || this->samples <= this->maxSamples) {
+		if (this->maxSamples < 0 || this->samples < this->maxSamples) {
 			this->optixRenderer->SetCamera(this->camera.get());
 
 			//Optix
@@ -160,7 +160,7 @@ void OptixView::Run() {
 				std::cout << "at Sample: " << samples << std::endl;
 			}
 		}
-		else if (this->samples == this->maxSamples + 1) {
+		else if (this->samples == this->maxSamples) {
 			std::cout << "Render is finished" << std::endl;
 			//WriteImage::WriteTextureToBMP(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.bmp");
 			WriteImage::WriteTextureToEXR(this->framebuffer->GetAttachedTexture(GL_COLOR_ATTACHMENT0), "C:/Users/damia/Desktop/LinearColorSpace.exr");
