@@ -8,6 +8,6 @@ struct Texture {
         if (pixel) delete[] pixel;
     }
 
-    float* pixel{ nullptr };
+    uint32_t* pixel{ nullptr };
     glm::ivec2 resolution{ -1 };
 };

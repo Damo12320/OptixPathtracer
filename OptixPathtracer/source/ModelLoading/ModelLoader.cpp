@@ -59,13 +59,13 @@ void ModelLoader::LoadTextures(Model* finalModel, tinygltf::Model& model, std::s
 
 		glm::ivec2 res;
 		int channels;
-		float* image = stbi_loadf(texturePath.c_str(), &res.x, &res.y, &channels, STBI_rgb_alpha);
+		unsigned char* image = stbi_load(texturePath.c_str(), &res.x, &res.y, &channels, STBI_rgb_alpha);
 		
 		if (image) {
 			std::unique_ptr<Texture> texture(new Texture);
 			texture->resolution = res;
 
-			texture->pixel = image;
+			texture->pixel = (uint32_t*)image;
 
 			//this is said by the Optix Sample. I couldn't see the issue
 			/* iw - actually, it seems that stbi loads the pictures mirrored along the y axis - mirror them here */
