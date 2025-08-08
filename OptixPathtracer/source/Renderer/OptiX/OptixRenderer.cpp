@@ -597,7 +597,7 @@ void OptixRenderer::CreateTextures() {
         tex_desc.filterMode = cudaFilterModeLinear;
         tex_desc.readMode = cudaReadModeElementType;//cudaReadModeNormalizedFloat <- this doesn't work for color. Color should not be normalized. But now it has to be uploaded as a float!
         tex_desc.normalizedCoords = 1;
-        tex_desc.maxAnisotropy = 1;
+        tex_desc.maxAnisotropy = 16;
         tex_desc.maxMipmapLevelClamp = 99;
         tex_desc.minMipmapLevelClamp = 0;
         tex_desc.mipmapFilterMode = cudaFilterModePoint;

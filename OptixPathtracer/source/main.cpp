@@ -83,7 +83,7 @@ int main()
     //right Handed Coordinate System
     //World Coordinate System: x = out of the mnonitor, y = up, z = left
     //const int maxSamples = 1024;
-    const int maxSamples = -100;
+    const int maxSamples = 1;
     const int maxBounces = 2;//more as "max Collisions per path"
 
 
