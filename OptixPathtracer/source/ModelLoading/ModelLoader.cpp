@@ -58,9 +58,9 @@ void ModelLoader::LoadTextures(Model* finalModel, tinygltf::Model& model, std::s
 		//std::cout << "TexturePath " << texturePath << std::endl;
 
 		glm::ivec2 res;
-		int channels;
-		unsigned char* image = stbi_load(texturePath.c_str(), &res.x, &res.y, &channels, STBI_rgb_alpha);
-		
+		int comp;
+		unsigned char* image = stbi_load(texturePath.c_str(), &res.x, &res.y, &comp, STBI_rgb_alpha);
+
 		if (image) {
 			std::unique_ptr<Texture> texture(new Texture);
 			texture->resolution = res;
