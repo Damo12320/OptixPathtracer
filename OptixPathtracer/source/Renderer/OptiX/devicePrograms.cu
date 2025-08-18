@@ -56,14 +56,6 @@ extern "C" __constant__ LaunchParams optixLaunchParams;
 extern "C" __global__ void __closesthit__shadow()
 {
     //only decoration (not needed, but coherent)
-
-
-    /*MeshSBTData& sbtData = *(MeshSBTData*)optixGetSbtDataPointer();
-
-    if (sbtData.roughness == 0.0f) {
-        float& prd = *(float*)getPRD_1<float>();
-        prd = 1.0f;
-    }*/
 }
 
 
@@ -239,7 +231,7 @@ __device__ float LightVisibility(glm::vec3 pointLightPos, glm::vec3 surfPos, glm
         // For shadow rays: skip any/closest hit shaders and terminate on first
         // intersection with anything. The miss shader is used to mark if the
         // light was visible.
-        OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT || OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT,
+        OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT,
         SHADOW_RAY_TYPE,            // SBT offset
         RAY_TYPE_COUNT,               // SBT stride
         SHADOW_RAY_TYPE,            // missSBTIndex 
