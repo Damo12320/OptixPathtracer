@@ -25,7 +25,9 @@ The Focus of this implementation lies on the BRDFs. This is reflected in the fea
 
 
 
-## Analysis
+## Analysis (under construction)
+
+### [PBRT](https://github.com/mmp/pbrt-v4) comparison
 
 This implementation is compared to the PBRT implementation to analyse the validity of it. The Image Tools from PBRT where used to determine the Metrics values. 
 It shows, that this implementation still has some differences to the PBRT implementation, but it seems to be close.
@@ -42,6 +44,19 @@ Lower values are better.
 | Dielectric (dark)                | 1.24E-07                       |	0.00084382464                                        |
 | Dielectric (bright)              | 4.98E-05                       |	0.007553334                                          |
 | Layered (Diffuse + Dielectric)   | 8.84E-07                       | 0.0032398894                                         |
+
+
+### [Cycles Renderer](https://www.cycles-renderer.org/) comparison
+
+Lower values are better.
+| Scene                            | sqrt Mean Squared Error (sqrtMSE) | 1 - SSIM       | [FLIP](https://research.nvidia.com/publication/flip) |
+| -------------------------------- | --------------------------------- | ---------------|----------------------------------------------------- |
+| 1                                | 0.000062                          |	0.000027      | 0.532361                                             |
+| 2                                | 0.005572                          |	0.000149      | 0.426682                                             |
+| 3                                | 0.000135                          |	0.000181      | 0.335402                                             |
+| 4                                | 0.000199                          |	0.000238      | 0.290489                                             |
+| 5                                | 0.000082                          | 0.000063       | 0.292399                                             |
+| 6                                | 0.000313                          | 0.000147       | 0.439174                                             |
 
 ## Images
 
